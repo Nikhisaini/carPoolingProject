@@ -10,7 +10,7 @@ const vehicleSchema = new mongoose.Schema(
 
     drivingLicenceId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "DrivingLicence",
+      ref: "Licence",
       required: true,
     },
 

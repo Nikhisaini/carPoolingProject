@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const drivingLicenceSchema = new mongoose.Schema(
+const LicenceSchema = new mongoose.Schema(
   {
     userId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -60,6 +60,6 @@ const drivingLicenceSchema = new mongoose.Schema(
   },
 );
 
-const DrivingLicence = mongoose.model("DrivingLicence", drivingLicenceSchema);
+const Licence = mongoose.model("Licence", LicenceSchema);
 
-export default DrivingLicence;
+export default Licence;

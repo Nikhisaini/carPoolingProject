@@ -4,7 +4,7 @@ const licenceCategoryMappingSchema = new mongoose.Schema(
   {
     drivingLicenceId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "DrivingLicence",
+      ref: "Licence",
       required: true,
     },
     licenceCategoryId: {
@@ -34,6 +34,7 @@ licenceCategoryMappingSchema.index(
 const LicenceCategoryMapping = mongoose.model(
   "LicenceCategoryMapping",
   licenceCategoryMappingSchema,
+  "licence_categoryMapping",
 );
 
 export default LicenceCategoryMapping;

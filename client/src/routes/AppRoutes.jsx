@@ -12,6 +12,7 @@ import AddVehicle from "../pages/user/vehicle/AddVehicle";
 import MyVehicle from "@/pages/user/vehicle/MyVehicle";
 import VehicleDetail from "@/pages/user/vehicle/VehicleDetail";
 import EditVehicle from "@/pages/user/vehicle/EditVehicle";
+import AdminRoutes from "./AdminRoutes";
 
 function AppRoutes() {
   return (
@@ -21,7 +22,7 @@ function AppRoutes() {
         <Route path="/register" element={<Register />} />
         <Route path="/verify-otp" element={<VerifyOtp />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/profile" element={<Profile />} />\
+        <Route path="/profile" element={<Profile />} />
         <Route path="/complete-profile" element={<CompleteProfile />} />
         <Route path="/edit-profile" element={<EditProfile />} />
         <Route path="/add-licence" element={<AddLicence />} />
@@ -30,6 +31,7 @@ function AppRoutes() {
         <Route path="/vehicle/:id" element={<VehicleDetail />} />
         <Route path="/edit-vehicle/:id" element={<EditVehicle />} />
       </Route>
+      <Route path="/admin/*" element={<AdminRoutes />}></Route>
     </Routes>
   );
 }

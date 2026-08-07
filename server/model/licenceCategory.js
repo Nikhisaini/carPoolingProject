@@ -20,6 +20,7 @@ const licenceCategorySchema = new mongoose.Schema({
 const LicenceCategory = mongoose.model(
   "LicenceCategory",
   licenceCategorySchema,
+  "licence_category",
 );
 
 export default LicenceCategory;

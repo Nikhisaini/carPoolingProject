@@ -1,7 +1,7 @@
 import bcrypt from "bcrypt";
 import User from "../model/user.js";
 import crypto from "crypto";
-import OtpVerification from "../model/otpVerification.js";
+import UserVerification from "../model/userVerification.js";
 import sendOtp from "../utils/sendOtp.js";
 import client from "../config/twilio.js";
 import jwt from "jsonwebtoken";
@@ -122,7 +122,7 @@ const verifyOtp = async (req, res) => {
       });
     }
 
-    const otpData = await OtpVerification.findOne({
+    const otpData = await UserVerification.findOne({
       userId,
       purpose: "Register",
     });
@@ -135,7 +135,7 @@ const verifyOtp = async (req, res) => {
     }
 
     if (otpData.expiresAt < new Date()) {
-      await OtpVerification.deleteOne({ _id: otpData._id });
+      await UserVerification.deleteOne({ _id: otpData._id });
 
       return res.status(400).json({
         success: false,
@@ -154,7 +154,7 @@ const verifyOtp = async (req, res) => {
       isVerified: true,
     });
 
-    await OtpVerification.deleteOne({ _id: otpData._id });
+    await UserVerification.deleteOne({ _id: otpData._id });
 
     return res.status(200).json({
       success: true,

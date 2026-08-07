@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const otpSchema = mongoose.Schema(
+const userVerificationSchema = mongoose.Schema(
   {
     userId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -32,5 +32,9 @@ const otpSchema = mongoose.Schema(
     timestamps: true,
   },
 );
-const OtpVerification = mongoose.model("OtpVerification", otpSchema);
-export default OtpVerification;
+const UserVerification = mongoose.model(
+  "UserVerification",
+  userVerificationSchema,
+  "user_verifications",
+);
+export default UserVerification;

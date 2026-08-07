@@ -4,7 +4,7 @@ import connectDb from "./db.js";
 import VehicleType from "../model/vehicleType.js";
 import FuelType from "../model/fuelType.js";
 import LicenceCategory from "../model/licenceCategory.js";
-import VehicleTypeLicenceCategoryMapping from "../model/VehicleTypeLicenceCategoryMapping.js";
+import VehicleLicenceMapping from "../model/vehicleLicenceMapping.js";
 
 const seedMasterData = async () => {
   try {
@@ -12,13 +12,11 @@ const seedMasterData = async () => {
 
     console.log("Database Connected");
 
-    // Clear existing data
     await VehicleType.deleteMany({});
     await FuelType.deleteMany({});
     await LicenceCategory.deleteMany({});
-    await VehicleTypeLicenceCategoryMapping.deleteMany({});
+    await VehicleLicenceMapping.deleteMany({});
 
-    // Seed Vehicle Types
     const vehicleTypes = await VehicleType.insertMany([
       { name: "Car" },
       { name: "Bike" },
@@ -28,7 +26,6 @@ const seedMasterData = async () => {
       { name: "Bus" },
     ]);
 
-    // Seed Fuel Types
     await FuelType.insertMany([
       { name: "Petrol" },
       { name: "Diesel" },
@@ -36,7 +33,6 @@ const seedMasterData = async () => {
       { name: "Electric" },
     ]);
 
-    // Find vehicle IDs
     const car = vehicleTypes.find((v) => v.name === "Car");
     const bike = vehicleTypes.find((v) => v.name === "Bike");
     const scooter = vehicleTypes.find((v) => v.name === "Scooter");
@@ -44,7 +40,6 @@ const seedMasterData = async () => {
     const van = vehicleTypes.find((v) => v.name === "Van");
     const bus = vehicleTypes.find((v) => v.name === "Bus");
 
-    // Seed Licence Categories
     const licenceCategories = await LicenceCategory.insertMany([
       {
         name: "LMV",
@@ -60,14 +55,11 @@ const seedMasterData = async () => {
       },
     ]);
 
-    // Find licence category IDs
     const lmv = licenceCategories.find((c) => c.name === "LMV");
     const mcwg = licenceCategories.find((c) => c.name === "MCWG");
     const hmv = licenceCategories.find((c) => c.name === "HMV");
 
-    // Seed Vehicle Type ↔ Licence Category Mapping
-    await VehicleTypeLicenceCategoryMapping.insertMany([
-      // LMV
+    await VehicleLicenceMapping.insertMany([
       {
         vehicleTypeId: car._id,
         licenceCategoryId: lmv._id,
@@ -81,7 +73,6 @@ const seedMasterData = async () => {
         licenceCategoryId: lmv._id,
       },
 
-      // MCWG
       {
         vehicleTypeId: bike._id,
         licenceCategoryId: mcwg._id,
@@ -91,7 +82,6 @@ const seedMasterData = async () => {
         licenceCategoryId: mcwg._id,
       },
 
-      // HMV
       {
         vehicleTypeId: bus._id,
         licenceCategoryId: hmv._id,

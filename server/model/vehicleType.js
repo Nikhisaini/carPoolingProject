@@ -18,6 +18,10 @@ const vehicleTypeSchema = new mongoose.Schema(
   },
 );
 
-const VehicleType = mongoose.model("VehicleType", vehicleTypeSchema);
+const VehicleType = mongoose.model(
+  "VehicleType",
+  vehicleTypeSchema,
+  "vehicleType",
+);
 
 export default VehicleType;

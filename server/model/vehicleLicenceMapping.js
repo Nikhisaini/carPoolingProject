@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const vehicleTypeLicenceCategoryMappingSchema = mongoose.Schema(
+const vehicleLicenceMappingSchema = mongoose.Schema(
   {
     vehicleTypeId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -22,7 +22,7 @@ const vehicleTypeLicenceCategoryMappingSchema = mongoose.Schema(
     timestamps: true,
   },
 );
-vehicleTypeLicenceCategoryMappingSchema.index(
+vehicleLicenceMappingSchema.index(
   {
     vehicleTypeId: 1,
     licenceCategoryId: 1,
@@ -32,8 +32,9 @@ vehicleTypeLicenceCategoryMappingSchema.index(
   },
 );
 
-const VehicleTypeLicenceCategoryMapping = mongoose.model(
-  "VehicleTypeLicenceCategoryMapping",
-  vehicleTypeLicenceCategoryMappingSchema,
+const VehicleLicenceMapping = mongoose.model(
+  "VehicleLicenceMapping",
+  vehicleLicenceMappingSchema,
+  "vehicle_licenceMapping",
 );
-export default VehicleTypeLicenceCategoryMapping;
+export default VehicleLicenceMapping;

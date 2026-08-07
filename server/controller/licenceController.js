@@ -1,4 +1,4 @@
-import DrivingLicence from "../model/drivingLicence.js";
+import Licence from "../model/licence.js";
 import LicenceCategory from "../model/licenceCategory.js";
 import LicenceCategoryMapping from "../model/LicenceCategoryMapping.js";
 
@@ -14,7 +14,7 @@ const addlicence = async (req, res) => {
       categories,
     } = req.body;
 
-    const existinglincence = await DrivingLicence.findOne({ userId });
+    const existinglincence = await Licence.findOne({ userId });
 
     if (existinglincence) {
       return res.status(400).json({
@@ -54,7 +54,7 @@ const addlicence = async (req, res) => {
         message: "One or more licence categories are invalid.",
       });
     }
-    const licence = await DrivingLicence.create({
+    const licence = await Licence.create({
       userId,
       licenceNumber,
       // holderName,
@@ -96,4 +96,32 @@ const addlicence = async (req, res) => {
   }
 };
 
-export { addlicence };
+const checkApprovedLicence = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    const licence = await Licence.findOne({
+      userId: userId,
+      verificationStatus: "Approved",
+    });
+
+    if (!licence) {
+      return res.status(200).json({
+        success: false,
+        message: "Driving licence approval pending",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Licence approved",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+export { addlicence, checkApprovedLicence };

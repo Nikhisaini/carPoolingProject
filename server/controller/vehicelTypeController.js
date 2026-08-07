@@ -1,13 +1,13 @@
-import DrivingLicence from "../model/drivingLicence.js";
+import Licence from "../model/licence.js";
 import LicenceCategory from "../model/licenceCategory.js";
 import LicenceCategoryMapping from "../model/LicenceCategoryMapping.js";
 import VehicleType from "../model/vehicleType.js";
-import VehicleTypeLicenceCategoryMapping from "../model/VehicleTypeLicenceCategoryMapping.js";
+import VehicleLicenceMapping from "../model/vehicleLicenceMapping.js";
 
 const getUserVehicleTypes = async (req, res) => {
   try {
     const userId = req.user._id;
-    const licence = await DrivingLicence.findOne({
+    const licence = await Licence.findOne({
       userId,
       verificationStatus: "Approved",
     });
@@ -22,7 +22,7 @@ const getUserVehicleTypes = async (req, res) => {
       drivingLicenceId: licence._id,
     });
     const categoryIds = licenceCategories.map((item) => item.licenceCategoryId);
-    const vehicleMappings = await VehicleTypeLicenceCategoryMapping.find({
+    const vehicleMappings = await VehicleLicenceMapping.find({
       licenceCategoryId: { $in: categoryIds },
     });
 

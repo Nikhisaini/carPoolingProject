@@ -17,6 +17,8 @@ function AddVehicle() {
   const [rcBackImage, setRcBackImage] = useState(null);
   const [insuranceImage, setInsuranceImage] = useState(null);
   const [loading, setloading] = useState(false);
+  const [licenceApproved, setLicenceApproved] = useState(false);
+  const [checkingLicence, setCheckingLicence] = useState(true);
   const [vehicleTypes, setVehicleTypes] = useState([]);
   const [fuelTypes, setFuelTypes] = useState([]);
   const [errorMessage, setErrorMessage] = useState("");
@@ -35,8 +37,21 @@ function AddVehicle() {
   };
 
   useEffect(() => {
-    const fetchMasterData = async () => {
+    const checkLicenceAndFetchData = async () => {
       try {
+        setCheckingLicence(true);
+
+        // check licence approval
+        const licenceRes = await api.get("/licence/check-approved");
+
+        if (!licenceRes.data.success) {
+          setLicenceApproved(false);
+          return;
+        }
+
+        setLicenceApproved(true);
+
+        // fetch master data only if licence approved
         const [vehicleRes, fuelRes] = await Promise.all([
           api.get("/vehicle-type/list"),
           api.get("/fuel-type/list"),
@@ -45,10 +60,14 @@ function AddVehicle() {
         setVehicleTypes(vehicleRes.data.data);
         setFuelTypes(fuelRes.data.data);
       } catch (error) {
-        console.log("Master Data Error", error);
+        console.log("Licence Check Error", error);
+        setLicenceApproved(false);
+      } finally {
+        setCheckingLicence(false);
       }
     };
-    fetchMasterData();
+
+    checkLicenceAndFetchData();
   }, []);
 
   const handleVehicleImages = (e) => {
@@ -146,232 +165,271 @@ function AddVehicle() {
     }
   };
   return (
-    <div className="min-h-screen bg-slate-100 py-10">
-      <div className="max-w-5xl mx-auto">
-        <form
-          onSubmit={handleSubmit}
-          className="bg-white rounded-3xl shadow-xl overflow-hidden"
-        >
-          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-6">
-            <h1 className="text-3xl font-bold text-white">Add Your Vehicle</h1>
+    <>
+      {checkingLicence ? (
+        <div className="min-h-screen flex items-center justify-center bg-gray-100">
+          <h2 className="text-xl font-semibold">
+            Checking licence approval...
+          </h2>
+        </div>
+      ) : !licenceApproved ? (
+        <div className="min-h-screen flex items-center justify-center bg-gray-100">
+          <div className="bg-white p-8 rounded-xl shadow-lg text-center max-w-md">
+            <h2 className="text-2xl font-bold text-red-600">
+              Driving Licence Approval Pending
+            </h2>
 
-            <p className="text-blue-100 mt-2">
-              Add your vehicle details for verification.
+            <p className="mt-4 text-gray-600">
+              Your driving licence is not approved yet. Please wait for admin
+              approval before adding a vehicle.
             </p>
+
+            <div className="mt-5 bg-yellow-100 text-yellow-800 p-3 rounded-lg">
+              You can add your vehicle after licence approval.
+            </div>
           </div>
-          {errorMessage && (
-            <div className="mb-4 rounded-lg bg-red-100 border border-red-400 text-red-700 px-4 py-3">
-              {errorMessage}
-            </div>
-          )}
+        </div>
+      ) : (
+        <div className="min-h-screen bg-gray-100 py-10">
+          <div className="max-w-5xl mx-auto bg-white rounded-2xl shadow-lg">
+            {/* Header */}
 
-          {successMessage && (
-            <div className="mb-4 rounded-lg bg-green-100 border border-green-400 text-green-700 px-4 py-3">
-              {successMessage}
-            </div>
-          )}
-          <div className="p-8 space-y-6">
-            <div className="grid md:grid-cols-2 gap-6">
-              <div>
-                <label className="block mb-2 font-semibold">Vehicle Type</label>
+            <div className="bg-blue-600 text-white p-8 rounded-t-2xl">
+              <h1 className="text-3xl font-bold">Add Your Vehicle</h1>
 
-                <select
-                  name="vehicleType"
-                  value={formData.vehicleType}
-                  onChange={handleChange}
-                  required
-                  className="w-full border rounded-xl p-3"
+              <p className="text-blue-100 mt-2">
+                Add your vehicle details for verification.
+              </p>
+            </div>
+
+            <form onSubmit={handleSubmit}>
+              {errorMessage && (
+                <div className="m-6 rounded-lg bg-red-100 border border-red-400 text-red-700 px-4 py-3">
+                  {errorMessage}
+                </div>
+              )}
+
+              {successMessage && (
+                <div className="m-6 rounded-lg bg-green-100 border border-green-400 text-green-700 px-4 py-3">
+                  {successMessage}
+                </div>
+              )}
+
+              <div className="p-8 space-y-6">
+                <div className="grid md:grid-cols-2 gap-6">
+                  {/* Vehicle Type */}
+
+                  <div>
+                    <label className="block mb-2 font-semibold">
+                      Vehicle Type
+                    </label>
+
+                    <select
+                      name="vehicleType"
+                      value={formData.vehicleType}
+                      onChange={handleChange}
+                      className="w-full border rounded-xl p-3"
+                    >
+                      <option value="">Select Vehicle Type</option>
+
+                      {vehicleTypes.map((type) => (
+                        <option key={type._id} value={type._id}>
+                          {type.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Brand */}
+
+                  <div>
+                    <label className="block mb-2 font-semibold">Brand</label>
+
+                    <input
+                      type="text"
+                      name="brand"
+                      value={formData.brand}
+                      onChange={handleChange}
+                      placeholder="Hyundai"
+                      className="w-full border rounded-xl p-3"
+                    />
+                  </div>
+
+                  {/* Model */}
+
+                  <div>
+                    <label className="block mb-2 font-semibold">Model</label>
+
+                    <input
+                      type="text"
+                      name="model"
+                      value={formData.model}
+                      onChange={handleChange}
+                      placeholder="i20"
+                      className="w-full border rounded-xl p-3"
+                    />
+                  </div>
+
+                  {/* Manufacture Year */}
+
+                  <div>
+                    <label className="block mb-2 font-semibold">
+                      Manufacture Year
+                    </label>
+
+                    <input
+                      type="number"
+                      name="manufactureYear"
+                      value={formData.manufactureYear}
+                      onChange={handleChange}
+                      className="w-full border rounded-xl p-3"
+                    />
+                  </div>
+
+                  {/* Color */}
+
+                  <div>
+                    <label className="block mb-2 font-semibold">Color</label>
+
+                    <input
+                      type="text"
+                      name="color"
+                      value={formData.color}
+                      onChange={handleChange}
+                      className="w-full border rounded-xl p-3"
+                    />
+                  </div>
+
+                  {/* Registration */}
+
+                  <div>
+                    <label className="block mb-2 font-semibold">
+                      Registration Number
+                    </label>
+
+                    <input
+                      type="text"
+                      name="registrationNumber"
+                      value={formData.registrationNumber}
+                      onChange={handleChange}
+                      className="w-full border rounded-xl p-3"
+                    />
+                  </div>
+
+                  {/* Fuel */}
+
+                  <div>
+                    <label className="block mb-2 font-semibold">
+                      Fuel Type
+                    </label>
+
+                    <select
+                      name="fuelType"
+                      value={formData.fuelType}
+                      onChange={handleChange}
+                      className="w-full border rounded-xl p-3"
+                    >
+                      <option value="">Select Fuel Type</option>
+
+                      {fuelTypes.map((fuel) => (
+                        <option key={fuel._id} value={fuel._id}>
+                          {fuel.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Seating */}
+
+                  <div>
+                    <label className="block mb-2 font-semibold">
+                      Seating Capacity
+                    </label>
+
+                    <input
+                      type="number"
+                      name="seatingCapacity"
+                      value={formData.seatingCapacity}
+                      onChange={handleChange}
+                      className="w-full border rounded-xl p-3"
+                    />
+                  </div>
+                </div>
+
+                {/* Images */}
+
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block mb-2 font-semibold">
+                      Vehicle Images
+                    </label>
+
+                    <input
+                      ref={vehicleImagesRef}
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      onChange={handleVehicleImages}
+                      className="w-full border rounded-xl p-3"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block mb-2 font-semibold">
+                      RC Front Image
+                    </label>
+
+                    <input
+                      ref={rcFrontRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => setRcFrontImage(e.target.files[0])}
+                      className="w-full border rounded-xl p-3"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block mb-2 font-semibold">
+                      RC Back Image
+                    </label>
+
+                    <input
+                      ref={rcBackRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => setRcBackImage(e.target.files[0])}
+                      className="w-full border rounded-xl p-3"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block mb-2 font-semibold">
+                      Insurance Image
+                    </label>
+
+                    <input
+                      ref={insuranceRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => setInsuranceImage(e.target.files[0])}
+                      className="w-full border rounded-xl p-3"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white py-4 rounded-xl font-semibold"
                 >
-                  <option value="">Select Vehicle Type</option>
-
-                  {vehicleTypes.map((type) => (
-                    <option key={type._id} value={type._id}>
-                      {type.name}
-                    </option>
-                  ))}
-                </select>
+                  {loading ? "Submitting..." : "Add Vehicle"}
+                </button>
               </div>
-
-              <div>
-                <label className="block mb-2 font-semibold">Brand</label>
-
-                <input
-                  type="text"
-                  name="brand"
-                  value={formData.brand}
-                  onChange={handleChange}
-                  className="w-full border rounded-xl p-3"
-                  placeholder="Hyundai"
-                />
-              </div>
-
-              <div>
-                <label className="block mb-2 font-semibold">Model</label>
-
-                <input
-                  type="text"
-                  name="model"
-                  value={formData.model}
-                  onChange={handleChange}
-                  className="w-full border rounded-xl p-3"
-                  placeholder="i20"
-                />
-              </div>
-
-              <div>
-                <label className="block mb-2 font-semibold">
-                  Manufacture Year
-                </label>
-
-                <input
-                  type="number"
-                  name="manufactureYear"
-                  value={formData.manufactureYear}
-                  onChange={handleChange}
-                  min="1900"
-                  max={new Date().getFullYear()}
-                  required
-                  className="w-full border rounded-xl p-3"
-                />
-              </div>
-
-              <div>
-                <label className="block mb-2 font-semibold">Color</label>
-
-                <input
-                  type="text"
-                  name="color"
-                  value={formData.color}
-                  onChange={handleChange}
-                  className="w-full border rounded-xl p-3"
-                />
-              </div>
-
-              <div>
-                <label className="block mb-2 font-semibold">
-                  Registration Number
-                </label>
-
-                <input
-                  type="text"
-                  name="registrationNumber"
-                  value={formData.registrationNumber}
-                  onChange={handleChange}
-                  className="w-full border rounded-xl p-3"
-                />
-              </div>
-
-              <div>
-                <label className="block mb-2 font-semibold">Fuel Type</label>
-
-                <select
-                  name="fuelType"
-                  value={formData.fuelType}
-                  onChange={handleChange}
-                  required
-                  className="w-full border rounded-xl p-3"
-                >
-                  <option value="">Select Fuel Type</option>
-
-                  {fuelTypes.map((fuel) => (
-                    <option key={fuel._id} value={fuel._id}>
-                      {fuel.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block mb-2 font-semibold">
-                  Seating Capacity
-                </label>
-
-                <input
-                  type="number"
-                  name="seatingCapacity"
-                  value={formData.seatingCapacity}
-                  onChange={handleChange}
-                  min="1"
-                  required
-                  className="w-full border rounded-xl p-3"
-                />
-              </div>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-6">
-              <div>
-                <label className="block mb-2 font-semibold">
-                  Vehicle Images
-                </label>
-
-                <input
-                  ref={vehicleImagesRef}
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  onChange={handleVehicleImages}
-                  className="w-full border rounded-xl p-3"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block mb-2 font-semibold">
-                  RC Front Image
-                </label>
-
-                <input
-                  ref={rcFrontRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setRcFrontImage(e.target.files[0])}
-                  className="w-full border rounded-xl p-3"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block mb-2 font-semibold">
-                  RC Back Image
-                </label>
-
-                <input
-                  ref={rcBackRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setRcBackImage(e.target.files[0])}
-                  className="w-full border rounded-xl p-3"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block mb-2 font-semibold">
-                  Insurance Image
-                </label>
-
-                <input
-                  ref={insuranceRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setInsuranceImage(e.target.files[0])}
-                  className="w-full border rounded-xl p-3"
-                  required
-                />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white py-4 rounded-xl font-semibold transition"
-            >
-              {loading ? "Submitting..." : "Add Vehicle"}
-            </button>
+            </form>
           </div>
-        </form>
-      </div>
-    </div>
+        </div>
+      )}
+    </>
   );
 }
 

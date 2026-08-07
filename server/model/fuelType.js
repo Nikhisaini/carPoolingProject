@@ -18,6 +18,6 @@ const fuelTypeSchema = new mongoose.Schema(
   },
 );
 
-const FuelType = mongoose.model("FuelType", fuelTypeSchema);
+const FuelType = mongoose.model("FuelType", fuelTypeSchema, "fuelType");
 
 export default FuelType;

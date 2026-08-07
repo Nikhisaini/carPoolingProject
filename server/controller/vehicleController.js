@@ -1,10 +1,10 @@
-import DrivingLicence from "../model/drivingLicence.js";
+import Licence from "../model/licence.js";
 import FuelType from "../model/fuelType.js";
 import LicenceCategory from "../model/licenceCategory.js";
 import LicenceCategoryMapping from "../model/LicenceCategoryMapping.js";
 import Vehicle from "../model/vehicle.js";
 import VehicleType from "../model/vehicleType.js";
-import VehicleTypeLicenceCategoryMapping from "../model/VehicleTypeLicenceCategoryMapping.js";
+import VehicleLicenceMapping from "../model/vehicleLicenceMapping.js";
 
 const validateVehicle = async ({ licence, vehicleTypeId, fuelTypeId }) => {
   const vehicleTypeData = await VehicleType.findOne({
@@ -43,7 +43,7 @@ const validateVehicle = async ({ licence, vehicleTypeId, fuelTypeId }) => {
     };
   }
 
-  const requiredCategories = await VehicleTypeLicenceCategoryMapping.find({
+  const requiredCategories = await VehicleLicenceMapping.find({
     vehicleTypeId: vehicleTypeId,
     isActive: true,
   });
@@ -88,7 +88,7 @@ const addVehicle = async (req, res) => {
       seatingCapacity,
     } = req.body;
 
-    const licence = await DrivingLicence.findOne({
+    const licence = await Licence.findOne({
       userId,
       verificationStatus: "Approved",
     });
@@ -240,7 +240,7 @@ const updateVehicle = async (req, res) => {
       });
     }
 
-    const licence = await DrivingLicence.findOne({
+    const licence = await Licence.findOne({
       userId: req.user._id,
       verificationStatus: "Approved",
     });

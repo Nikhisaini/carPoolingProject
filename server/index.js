@@ -11,6 +11,7 @@ import licenceRoutes from "./routes/licenceRoutes.js";
 import licenceCategoryRoutes from "./routes/licenceCategoryRoutes.js";
 import fuelTypesRoutes from "./routes/fuelTypesRoutes.js";
 import vhicelTypesRoutes from "./routes/vhicelTypesRoutes.js";
+import adminRoutes from "./routes/adminRoutes.js";
 connectDb();
 const app = express();
 const corsoptions = {
@@ -28,6 +29,7 @@ app.use("/api/vehicle", vehicleRoutes);
 app.use("/api/licence-category", licenceCategoryRoutes);
 app.use("/api/vehicle-type", vhicelTypesRoutes);
 app.use("/api/fuel-type", fuelTypesRoutes);
+app.use("/api/admin", adminRoutes);
 
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 const PORT = process.env.PORT || 8081;

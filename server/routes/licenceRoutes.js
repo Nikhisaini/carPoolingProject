@@ -1,6 +1,9 @@
 import express from "express";
 import authMiddleware from "../middleware/authMiddleware.js";
-import { addlicence } from "../controller/licenceController.js";
+import {
+  addlicence,
+  checkApprovedLicence,
+} from "../controller/licenceController.js";
 import uploadLicence from "../middleware/uploadLicence.js";
 
 const router = express.Router();
@@ -20,4 +23,5 @@ router.post(
   ]),
   addlicence,
 );
+router.get("/check-approved", authMiddleware, checkApprovedLicence);
 export default router;

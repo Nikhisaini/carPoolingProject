@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import OtpVerification from "../model/otpVerification.js";
+import UserVerification from "../model/userVerification.js";
 import sendEmail from "./sendEmail.js";
 import sendOtpTemplate from "./emailTemplates/sendOtpTemplate.js";
 
@@ -8,12 +8,12 @@ const sendOtp = async (userId, email, name, purpose = "REGISTER") => {
 
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-  await OtpVerification.findOneAndDelete({
+  await UserVerification.findOneAndDelete({
     userId,
     purpose,
   });
 
-  await OtpVerification.create({
+  await UserVerification.create({
     userId,
     otp,
     purpose,
