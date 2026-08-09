@@ -1,5 +1,55 @@
 import React, { useEffect, useRef, useState } from "react";
-import api from "../../../services/Api";
+import api from "@/services/Api";
+import {
+  Car,
+  Upload,
+  ImageIcon,
+  FileText,
+  ShieldCheck,
+  CheckCircle2,
+  Loader2,
+  X,
+  Hash,
+  Tag,
+  Clock,
+  AlertTriangle,
+} from "lucide-react";
+
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
+
+const MAX_IMAGE_SIZE_MB = 5;
+const MAX_VEHICLE_IMAGES = 6;
+const CURRENT_YEAR = new Date().getFullYear();
+
+const ALLOWED_TYPES = [
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/webp",
+  "image/avif",
+];
+
+function validateImage(file) {
+  if (!file) return "Please select an image.";
+  if (!ALLOWED_TYPES.includes(file.type)) {
+    return "Only JPG, PNG, WEBP and AVIF images are allowed.";
+  }
+  if (file.size === 0) return "Selected image is empty.";
+  if (file.size > MAX_IMAGE_SIZE_MB * 1024 * 1024) {
+    return `Image must be smaller than ${MAX_IMAGE_SIZE_MB}MB.`;
+  }
+  return null;
+}
 
 function AddVehicle() {
   const [formData, setFormData] = useState({
@@ -23,6 +73,7 @@ function AddVehicle() {
   const [fuelTypes, setFuelTypes] = useState([]);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [errors, setErrors] = useState({});
   const vehicleImagesRef = useRef(null);
   const rcFrontRef = useRef(null);
   const rcBackRef = useRef(null);
@@ -34,6 +85,14 @@ function AddVehicle() {
       ...prev,
       [name]: value,
     }));
+    setErrors((prev) => ({ ...prev, [name]: "" }));
+    setErrorMessage("");
+  };
+
+  const handleSelectChange = (name, value) => {
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    setErrors((prev) => ({ ...prev, [name]: "" }));
+    setErrorMessage("");
   };
 
   useEffect(() => {
@@ -41,7 +100,6 @@ function AddVehicle() {
       try {
         setCheckingLicence(true);
 
-        // check licence approval
         const licenceRes = await api.get("/licence/check-approved");
 
         if (!licenceRes.data.success) {
@@ -51,7 +109,6 @@ function AddVehicle() {
 
         setLicenceApproved(true);
 
-        // fetch master data only if licence approved
         const [vehicleRes, fuelRes] = await Promise.all([
           api.get("/vehicle-type/list"),
           api.get("/fuel-type/list"),
@@ -71,37 +128,119 @@ function AddVehicle() {
   }, []);
 
   const handleVehicleImages = (e) => {
-    setVehicleImages(Array.from(e.target.files));
+    const files = Array.from(e.target.files);
+
+    if (files.length > MAX_VEHICLE_IMAGES) {
+      setErrors((prev) => ({
+        ...prev,
+        vehicleImages: `You can upload up to ${MAX_VEHICLE_IMAGES} images.`,
+      }));
+      e.target.value = "";
+      return;
+    }
+
+    for (const file of files) {
+      const error = validateImage(file);
+      if (error) {
+        setErrors((prev) => ({
+          ...prev,
+          vehicleImages: `${file.name}: ${error}`,
+        }));
+        e.target.value = "";
+        setVehicleImages([]);
+        return;
+      }
+    }
+
+    setErrors((prev) => ({ ...prev, vehicleImages: "" }));
+    setVehicleImages(files);
+  };
+
+  const handleSingleImage = (e, setter, key) => {
+    const file = e.target.files[0];
+    const error = validateImage(file);
+    if (error) {
+      setErrors((prev) => ({ ...prev, [key]: error }));
+      e.target.value = "";
+      setter(null);
+      return;
+    }
+    setErrors((prev) => ({ ...prev, [key]: "" }));
+    setter(file);
+  };
+
+  const clearVehicleImages = () => {
+    setVehicleImages([]);
+    if (vehicleImagesRef.current) vehicleImagesRef.current.value = "";
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+
+    if (!formData.vehicleType) newErrors.vehicleType = "Select a vehicle type";
+
+    if (!formData.brand.trim()) {
+      newErrors.brand = "Brand is required";
+    } else if (formData.brand.trim().length < 2) {
+      newErrors.brand = "Brand must be at least 2 characters";
+    }
+
+    if (!formData.model.trim()) {
+      newErrors.model = "Model is required";
+    } else if (formData.model.trim().length < 1) {
+      newErrors.model = "Model is required";
+    }
+
+    const year = Number(formData.manufactureYear);
+    if (!formData.manufactureYear) {
+      newErrors.manufactureYear = "Manufacture year is required";
+    } else if (
+      !Number.isInteger(year) ||
+      year < 1980 ||
+      year > CURRENT_YEAR + 1
+    ) {
+      newErrors.manufactureYear = `Enter a year between 1980 and ${CURRENT_YEAR + 1}`;
+    }
+
+    if (!formData.color.trim()) {
+      newErrors.color = "Color is required";
+    }
+
+    if (!formData.registrationNumber.trim()) {
+      newErrors.registrationNumber = "Registration number is required";
+    } else if (!/^[A-Z0-9-]{4,15}$/i.test(formData.registrationNumber.trim())) {
+      newErrors.registrationNumber = "Enter a valid registration number";
+    }
+
+    if (!formData.fuelType) newErrors.fuelType = "Select a fuel type";
+
+    const seats = Number(formData.seatingCapacity);
+    if (!formData.seatingCapacity) {
+      newErrors.seatingCapacity = "Seating capacity is required";
+    } else if (!Number.isInteger(seats) || seats < 1 || seats > 60) {
+      newErrors.seatingCapacity = "Enter a valid seating capacity (1-60)";
+    }
+
+    if (vehicleImages.length === 0) {
+      newErrors.vehicleImages = "Please upload at least one vehicle image";
+    }
+    if (!rcFrontImage) newErrors.rcFrontImage = "RC front image is required";
+    if (!rcBackImage) newErrors.rcBackImage = "RC back image is required";
+    if (!insuranceImage)
+      newErrors.insuranceImage = "Insurance image is required";
+
+    setErrors((prev) => ({ ...prev, ...newErrors }));
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage("");
     setSuccessMessage("");
+
+    if (!validateForm()) return;
+
     try {
-      if (
-        !formData.vehicleType ||
-        !formData.brand ||
-        !formData.model ||
-        !formData.manufactureYear ||
-        !formData.color ||
-        !formData.registrationNumber ||
-        !formData.fuelType ||
-        !formData.seatingCapacity
-      ) {
-        setErrorMessage("Please fill all required fields.");
-        return;
-      }
-
-      if (vehicleImages.length === 0) {
-        setErrorMessage("Please upload at least one vehicle image.");
-        return;
-      }
-
-      if (!rcFrontImage || !rcBackImage || !insuranceImage) {
-        setErrorMessage("Please upload all required document images.");
-        return;
-      }
       setloading(true);
 
       const data = new FormData();
@@ -121,15 +260,9 @@ function AddVehicle() {
         data.append("vehicleImages", image);
       });
 
-      if (rcFrontImage) {
-        data.append("rcFrontImage", rcFrontImage);
-      }
-      if (rcBackImage) {
-        data.append("rcBackImage", rcBackImage);
-      }
-      if (insuranceImage) {
-        data.append("insuranceImage", insuranceImage);
-      }
+      if (rcFrontImage) data.append("rcFrontImage", rcFrontImage);
+      if (rcBackImage) data.append("rcBackImage", rcBackImage);
+      if (insuranceImage) data.append("insuranceImage", insuranceImage);
 
       const res = await api.post("/vehicle/add", data, {
         headers: {
@@ -164,272 +297,442 @@ function AddVehicle() {
       setloading(false);
     }
   };
-  return (
-    <>
-      {checkingLicence ? (
-        <div className="min-h-screen flex items-center justify-center bg-gray-100">
-          <h2 className="text-xl font-semibold">
-            Checking licence approval...
-          </h2>
+
+  // =====================================================
+  // LOADING / PENDING STATES
+  // =====================================================
+  if (checkingLicence) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-muted/30">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Checking licence approval...
         </div>
-      ) : !licenceApproved ? (
-        <div className="min-h-screen flex items-center justify-center bg-gray-100">
-          <div className="bg-white p-8 rounded-xl shadow-lg text-center max-w-md">
-            <h2 className="text-2xl font-bold text-red-600">
-              Driving Licence Approval Pending
-            </h2>
+      </div>
+    );
+  }
 
-            <p className="mt-4 text-gray-600">
-              Your driving licence is not approved yet. Please wait for admin
-              approval before adding a vehicle.
-            </p>
-
-            <div className="mt-5 bg-yellow-100 text-yellow-800 p-3 rounded-lg">
-              You can add your vehicle after licence approval.
-            </div>
+  if (!licenceApproved) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-muted/30 px-4">
+        <div className="w-full max-w-md rounded-2xl border border-border bg-background p-8 text-center shadow-sm">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-amber-50">
+            <Clock className="h-6 w-6 text-amber-600" />
+          </div>
+          <h2 className="mt-4 text-lg font-semibold text-foreground">
+            Licence approval pending
+          </h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Your driving licence is not approved yet. Please wait for admin
+            approval before adding a vehicle.
+          </p>
+          <div className="mt-5 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-left text-sm text-amber-800">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            You can add your vehicle once your licence is approved.
           </div>
         </div>
-      ) : (
-        <div className="min-h-screen bg-gray-100 py-10">
-          <div className="max-w-5xl mx-auto bg-white rounded-2xl shadow-lg">
-            {/* Header */}
+      </div>
+    );
+  }
 
-            <div className="bg-blue-600 text-white p-8 rounded-t-2xl">
-              <h1 className="text-3xl font-bold">Add Your Vehicle</h1>
+  // =====================================================
+  // MAIN FORM
+  // =====================================================
+  const imageUploadFields = [
+    {
+      key: "rcFrontImage",
+      label: "RC front image",
+      file: rcFrontImage,
+      onChange: (e) => handleSingleImage(e, setRcFrontImage, "rcFrontImage"),
+      ref: rcFrontRef,
+      icon: FileText,
+    },
+    {
+      key: "rcBackImage",
+      label: "RC back image",
+      file: rcBackImage,
+      onChange: (e) => handleSingleImage(e, setRcBackImage, "rcBackImage"),
+      ref: rcBackRef,
+      icon: FileText,
+    },
+    {
+      key: "insuranceImage",
+      label: "Insurance image",
+      file: insuranceImage,
+      onChange: (e) =>
+        handleSingleImage(e, setInsuranceImage, "insuranceImage"),
+      ref: insuranceRef,
+      icon: ShieldCheck,
+    },
+  ];
 
-              <p className="text-blue-100 mt-2">
-                Add your vehicle details for verification.
-              </p>
+  return (
+    <div className="min-h-screen bg-muted/30 px-4 py-12">
+      <div className="mx-auto max-w-3xl">
+        <form onSubmit={handleSubmit}>
+          <div className="overflow-hidden rounded-2xl border border-border bg-background shadow-sm">
+            <div className="flex items-center gap-3 border-b border-border px-7 py-5">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50">
+                <Car className="h-5 w-5 text-blue-600" />
+              </div>
+              <div>
+                <h1 className="text-lg font-semibold tracking-tight text-foreground">
+                  Add your vehicle
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                  Add your vehicle details for verification.
+                </p>
+              </div>
             </div>
 
-            <form onSubmit={handleSubmit}>
+            <div className="px-7 py-6">
               {errorMessage && (
-                <div className="m-6 rounded-lg bg-red-100 border border-red-400 text-red-700 px-4 py-3">
+                <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                   {errorMessage}
                 </div>
               )}
-
               {successMessage && (
-                <div className="m-6 rounded-lg bg-green-100 border border-green-400 text-green-700 px-4 py-3">
+                <div className="mb-6 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
                   {successMessage}
                 </div>
               )}
 
-              <div className="p-8 space-y-6">
-                <div className="grid md:grid-cols-2 gap-6">
-                  {/* Vehicle Type */}
+              <section>
+                <div className="mb-3 flex items-center gap-1.5">
+                  <Hash className="h-3.5 w-3.5 text-muted-foreground" />
+                  <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Vehicle details
+                  </h2>
+                </div>
 
+                <div className="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <label className="block mb-2 font-semibold">
-                      Vehicle Type
-                    </label>
-
-                    <select
-                      name="vehicleType"
+                    <Label htmlFor="vehicleType" className="mb-1.5 block">
+                      Vehicle type
+                    </Label>
+                    <Select
                       value={formData.vehicleType}
-                      onChange={handleChange}
-                      className="w-full border rounded-xl p-3"
+                      onValueChange={(v) =>
+                        handleSelectChange("vehicleType", v)
+                      }
                     >
-                      <option value="">Select Vehicle Type</option>
-
-                      {vehicleTypes.map((type) => (
-                        <option key={type._id} value={type._id}>
-                          {type.name}
-                        </option>
-                      ))}
-                    </select>
+                      <SelectTrigger id="vehicleType" className="w-full">
+                        <SelectValue placeholder="Select vehicle type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {vehicleTypes.map((type) => (
+                          <SelectItem key={type._id} value={type._id}>
+                            {type.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {errors.vehicleType && (
+                      <p className="mt-1 text-xs text-red-600">
+                        {errors.vehicleType}
+                      </p>
+                    )}
                   </div>
 
-                  {/* Brand */}
+                  <div>
+                    <Label htmlFor="fuelType" className="mb-1.5 block">
+                      Fuel type
+                    </Label>
+                    <Select
+                      value={formData.fuelType}
+                      onValueChange={(v) => handleSelectChange("fuelType", v)}
+                    >
+                      <SelectTrigger id="fuelType" className="w-full">
+                        <SelectValue placeholder="Select fuel type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {fuelTypes.map((fuel) => (
+                          <SelectItem key={fuel._id} value={fuel._id}>
+                            {fuel.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {errors.fuelType && (
+                      <p className="mt-1 text-xs text-red-600">
+                        {errors.fuelType}
+                      </p>
+                    )}
+                  </div>
 
                   <div>
-                    <label className="block mb-2 font-semibold">Brand</label>
-
-                    <input
-                      type="text"
+                    <Label htmlFor="brand" className="mb-1.5 block">
+                      Brand
+                    </Label>
+                    <Input
+                      id="brand"
                       name="brand"
                       value={formData.brand}
                       onChange={handleChange}
                       placeholder="Hyundai"
-                      className="w-full border rounded-xl p-3"
                     />
+                    {errors.brand && (
+                      <p className="mt-1 text-xs text-red-600">
+                        {errors.brand}
+                      </p>
+                    )}
                   </div>
 
-                  {/* Model */}
-
                   <div>
-                    <label className="block mb-2 font-semibold">Model</label>
-
-                    <input
-                      type="text"
+                    <Label htmlFor="model" className="mb-1.5 block">
+                      Model
+                    </Label>
+                    <Input
+                      id="model"
                       name="model"
                       value={formData.model}
                       onChange={handleChange}
                       placeholder="i20"
-                      className="w-full border rounded-xl p-3"
                     />
+                    {errors.model && (
+                      <p className="mt-1 text-xs text-red-600">
+                        {errors.model}
+                      </p>
+                    )}
                   </div>
 
-                  {/* Manufacture Year */}
-
                   <div>
-                    <label className="block mb-2 font-semibold">
-                      Manufacture Year
-                    </label>
-
-                    <input
+                    <Label htmlFor="manufactureYear" className="mb-1.5 block">
+                      Manufacture year
+                    </Label>
+                    <Input
+                      id="manufactureYear"
                       type="number"
                       name="manufactureYear"
                       value={formData.manufactureYear}
                       onChange={handleChange}
-                      className="w-full border rounded-xl p-3"
+                      placeholder="2022"
+                      min={1980}
+                      max={CURRENT_YEAR + 1}
                     />
+                    {errors.manufactureYear && (
+                      <p className="mt-1 text-xs text-red-600">
+                        {errors.manufactureYear}
+                      </p>
+                    )}
                   </div>
 
-                  {/* Color */}
-
                   <div>
-                    <label className="block mb-2 font-semibold">Color</label>
-
-                    <input
-                      type="text"
+                    <Label htmlFor="color" className="mb-1.5 block">
+                      Color
+                    </Label>
+                    <Input
+                      id="color"
                       name="color"
                       value={formData.color}
                       onChange={handleChange}
-                      className="w-full border rounded-xl p-3"
+                      placeholder="White"
                     />
+                    {errors.color && (
+                      <p className="mt-1 text-xs text-red-600">
+                        {errors.color}
+                      </p>
+                    )}
                   </div>
 
-                  {/* Registration */}
-
                   <div>
-                    <label className="block mb-2 font-semibold">
-                      Registration Number
-                    </label>
-
-                    <input
-                      type="text"
+                    <Label
+                      htmlFor="registrationNumber"
+                      className="mb-1.5 block"
+                    >
+                      Registration number
+                    </Label>
+                    <Input
+                      id="registrationNumber"
                       name="registrationNumber"
                       value={formData.registrationNumber}
                       onChange={handleChange}
-                      className="w-full border rounded-xl p-3"
+                      placeholder="PB03S5509"
+                      className="uppercase"
                     />
+                    {errors.registrationNumber && (
+                      <p className="mt-1 text-xs text-red-600">
+                        {errors.registrationNumber}
+                      </p>
+                    )}
                   </div>
 
-                  {/* Fuel */}
-
                   <div>
-                    <label className="block mb-2 font-semibold">
-                      Fuel Type
-                    </label>
-
-                    <select
-                      name="fuelType"
-                      value={formData.fuelType}
-                      onChange={handleChange}
-                      className="w-full border rounded-xl p-3"
-                    >
-                      <option value="">Select Fuel Type</option>
-
-                      {fuelTypes.map((fuel) => (
-                        <option key={fuel._id} value={fuel._id}>
-                          {fuel.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Seating */}
-
-                  <div>
-                    <label className="block mb-2 font-semibold">
-                      Seating Capacity
-                    </label>
-
-                    <input
+                    <Label htmlFor="seatingCapacity" className="mb-1.5 block">
+                      Seating capacity
+                    </Label>
+                    <Input
+                      id="seatingCapacity"
                       type="number"
                       name="seatingCapacity"
                       value={formData.seatingCapacity}
                       onChange={handleChange}
-                      className="w-full border rounded-xl p-3"
+                      placeholder="5"
+                      min={1}
+                      max={60}
                     />
+                    {errors.seatingCapacity && (
+                      <p className="mt-1 text-xs text-red-600">
+                        {errors.seatingCapacity}
+                      </p>
+                    )}
                   </div>
                 </div>
+              </section>
 
-                {/* Images */}
+              <div className="my-6 h-px bg-border" />
 
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block mb-2 font-semibold">
-                      Vehicle Images
-                    </label>
-
-                    <input
-                      ref={vehicleImagesRef}
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      onChange={handleVehicleImages}
-                      className="w-full border rounded-xl p-3"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block mb-2 font-semibold">
-                      RC Front Image
-                    </label>
-
-                    <input
-                      ref={rcFrontRef}
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => setRcFrontImage(e.target.files[0])}
-                      className="w-full border rounded-xl p-3"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block mb-2 font-semibold">
-                      RC Back Image
-                    </label>
-
-                    <input
-                      ref={rcBackRef}
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => setRcBackImage(e.target.files[0])}
-                      className="w-full border rounded-xl p-3"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block mb-2 font-semibold">
-                      Insurance Image
-                    </label>
-
-                    <input
-                      ref={insuranceRef}
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => setInsuranceImage(e.target.files[0])}
-                      className="w-full border rounded-xl p-3"
-                    />
-                  </div>
+              <section>
+                <div className="mb-3 flex items-center gap-1.5">
+                  <ImageIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                  <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Vehicle images
+                  </h2>
                 </div>
 
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white py-4 rounded-xl font-semibold"
+                <label
+                  className={cn(
+                    "group flex min-h-[140px] cursor-pointer flex-col items-center justify-center gap-2.5 rounded-xl border-2 border-dashed p-6 text-center transition-colors",
+                    vehicleImages.length > 0
+                      ? "border-emerald-300 bg-emerald-50/40"
+                      : "border-border bg-muted/20 hover:border-blue-400 hover:bg-blue-50/60",
+                  )}
                 >
-                  {loading ? "Submitting..." : "Add Vehicle"}
-                </button>
-              </div>
-            </form>
+                  <input
+                    ref={vehicleImagesRef}
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={handleVehicleImages}
+                    className="hidden"
+                  />
+
+                  {vehicleImages.length > 0 ? (
+                    <>
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100">
+                        <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                      </div>
+                      <p className="text-sm font-medium text-emerald-700">
+                        {vehicleImages.length} image
+                        {vehicleImages.length !== 1 ? "s" : ""} selected
+                      </p>
+                      <span
+                        role="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          clearVehicleImages();
+                        }}
+                        className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-red-600"
+                      >
+                        <X className="h-3 w-3" />
+                        Clear all
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted transition-colors group-hover:bg-blue-100">
+                        <Upload className="h-5 w-5 text-muted-foreground transition-colors group-hover:text-blue-600" />
+                      </div>
+                      <p className="text-sm font-medium text-foreground">
+                        Upload vehicle images
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Up to {MAX_VEHICLE_IMAGES} images · JPG, PNG, WEBP · 5MB
+                        each
+                      </p>
+                    </>
+                  )}
+                </label>
+                {errors.vehicleImages && (
+                  <p className="mt-1.5 text-xs text-red-600">
+                    {errors.vehicleImages}
+                  </p>
+                )}
+              </section>
+
+              <div className="my-6 h-px bg-border" />
+
+              <section>
+                <div className="mb-3 flex items-center gap-1.5">
+                  <Tag className="h-3.5 w-3.5 text-muted-foreground" />
+                  <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Documents
+                  </h2>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-3">
+                  {imageUploadFields.map((field) => {
+                    const Icon = field.icon;
+                    return (
+                      <div key={field.key}>
+                        <label
+                          className={cn(
+                            "group flex min-h-[140px] cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-4 text-center transition-colors",
+                            field.file
+                              ? "border-emerald-300 bg-emerald-50/40"
+                              : "border-border bg-muted/20 hover:border-blue-400 hover:bg-blue-50/60",
+                          )}
+                        >
+                          <input
+                            ref={field.ref}
+                            type="file"
+                            accept="image/*"
+                            onChange={field.onChange}
+                            className="hidden"
+                          />
+
+                          {field.file ? (
+                            <>
+                              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-100">
+                                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                              </div>
+                              <p className="max-w-[140px] truncate text-xs font-medium text-emerald-700">
+                                {field.file.name}
+                              </p>
+                            </>
+                          ) : (
+                            <>
+                              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted transition-colors group-hover:bg-blue-100">
+                                <Icon className="h-4 w-4 text-muted-foreground transition-colors group-hover:text-blue-600" />
+                              </div>
+                              <p className="text-xs font-medium text-foreground">
+                                {field.label}
+                              </p>
+                            </>
+                          )}
+                        </label>
+                        {errors[field.key] && (
+                          <p className="mt-1 text-xs text-red-600">
+                            {errors[field.key]}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            </div>
+
+            <div className="border-t border-border bg-muted/20 px-7 py-5">
+              <Button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-blue-600 text-white hover:bg-blue-700"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Submitting...
+                  </>
+                ) : (
+                  "Add vehicle"
+                )}
+              </Button>
+            </div>
           </div>
-        </div>
-      )}
-    </>
+        </form>
+      </div>
+    </div>
   );
 }
 

@@ -1,9 +1,25 @@
 import api from "@/services/Api";
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Camera, Loader2, User as UserIcon } from "lucide-react";
+
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+const MAX_IMAGE_SIZE_MB = 5;
+const MIN_AGE = 18;
 
 function CompleteProfile() {
-  const naviage = useNavigate();
+  const navigate = useNavigate();
   const [profileImage, setProfileImage] = useState(null);
   const [imagePreview, setImagePreview] = useState("");
   const [gender, setGender] = useState("");
@@ -11,27 +27,73 @@ function CompleteProfile() {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [errors, setErrors] = useState({});
   const today = new Date().toISOString().split("T")[0];
 
-  const handleImageChnage = (e) => {
+  const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setErrors((prev) => ({
+        ...prev,
+        image: "Please select a valid image file.",
+      }));
+      return;
+    }
+
+    const sizeMB = file.size / (1024 * 1024);
+    if (sizeMB > MAX_IMAGE_SIZE_MB) {
+      setErrors((prev) => ({
+        ...prev,
+        image: `Image must be smaller than ${MAX_IMAGE_SIZE_MB}MB.`,
+      }));
+      return;
+    }
+
+    setErrors((prev) => ({ ...prev, image: "" }));
     setProfileImage(file);
     setImagePreview(URL.createObjectURL(file));
+  };
+
+  const calculateAge = (dobString) => {
+    const dobDate = new Date(dobString);
+    const now = new Date();
+    let age = now.getFullYear() - dobDate.getFullYear();
+    const monthDiff = now.getMonth() - dobDate.getMonth();
+    if (
+      monthDiff < 0 ||
+      (monthDiff === 0 && now.getDate() < dobDate.getDate())
+    ) {
+      age--;
+    }
+    return age;
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+
+    if (!gender) {
+      newErrors.gender = "Please select your gender";
+    }
+
+    if (!dob) {
+      newErrors.dob = "Please select your date of birth";
+    } else if (calculateAge(dob) < MIN_AGE) {
+      newErrors.dob = `You must be at least ${MIN_AGE} years old`;
+    }
+
+    setErrors((prev) => ({ ...prev, ...newErrors }));
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage("");
     setSuccessMessage("");
-    if (!gender) {
-      setErrorMessage("Please select gender.");
-      return;
-    }
-    if (!dob) {
-      setErrorMessage("Please select date of birth.");
-      return;
-    }
+
+    if (!validateForm()) return;
+
     try {
       setLoading(true);
       const formData = new FormData();
@@ -43,7 +105,7 @@ function CompleteProfile() {
       const res = await api.put("/profile/update", formData);
       setSuccessMessage(res.data.message);
 
-      naviage("/profile");
+      navigate("/profile");
     } catch (error) {
       setErrorMessage(
         error.response?.data?.message ||
@@ -56,88 +118,129 @@ function CompleteProfile() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 flex items-center justify-center px-4 py-10">
-      <form
-        onSubmit={handleSubmit}
-        className="w-full max-w-xl bg-white rounded-2xl shadow-xl p-8"
-      >
-        <h1 className="text-3xl font-bold text-center text-slate-800">
-          Complete Your Profile
-        </h1>
+    <div className="flex min-h-screen items-center justify-center bg-muted/30 px-4 py-10">
+      <div className="w-full max-w-md">
+        {/* =====================================================
+            HEADING
+        ===================================================== */}
+        <div className="mb-6 text-center">
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+            Complete your profile
+          </h1>
+          <p className="mt-1.5 text-sm text-muted-foreground">
+            Add a few more details to continue.
+          </p>
+        </div>
 
-        <p className="text-center text-slate-500 mt-2">
-          Add your personal information to continue.
-        </p>
         {errorMessage && (
-          <div className="mt-6 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-red-700">
+          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {errorMessage}
           </div>
         )}
 
         {successMessage && (
-          <div className="mt-6 rounded-xl border border-green-300 bg-green-50 px-4 py-3 text-green-700">
+          <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
             {successMessage}
           </div>
         )}
-        <div className="mt-8 flex flex-col items-center">
-          <div className="w-36 h-36 rounded-full overflow-hidden border-4 border-blue-500 shadow">
-            <img
-              src={
-                imagePreview ||
-                "https://ui-avatars.com/api/?name=User&background=2563eb&color=fff"
-              }
-              alt="Profile Preview"
-              className="w-full h-full object-cover"
-            />
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* =====================================================
+              AVATAR
+          ===================================================== */}
+          <div className="flex flex-col items-center">
+            <div className="relative">
+              <Avatar className="h-24 w-24">
+                <AvatarImage src={imagePreview || undefined} alt="Profile" />
+                <AvatarFallback>
+                  <UserIcon className="h-8 w-8 text-muted-foreground" />
+                </AvatarFallback>
+              </Avatar>
+
+              <label className="absolute -bottom-1 -right-1 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border-2 border-background bg-blue-600 text-white hover:bg-blue-700">
+                <Camera className="h-4 w-4" />
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleImageChange}
+                />
+              </label>
+            </div>
+
+            <p className="mt-3 text-xs text-muted-foreground">
+              JPG or PNG, up to {MAX_IMAGE_SIZE_MB}MB
+            </p>
+            {errors.image && (
+              <p className="mt-1 text-xs text-red-600">{errors.image}</p>
+            )}
           </div>
 
-          <label className="mt-5 cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg transition">
-            Upload Photo
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleImageChnage}
+          {/* =====================================================
+              FIELDS
+          ===================================================== */}
+          <div>
+            <Label htmlFor="gender" className="mb-1.5 block">
+              Gender
+            </Label>
+            <Select
+              value={gender}
+              onValueChange={(value) => {
+                setGender(value);
+                setErrors((prev) => ({ ...prev, gender: "" }));
+                setErrorMessage("");
+              }}
+            >
+              <SelectTrigger id="gender" className="w-full">
+                <SelectValue placeholder="Select gender" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Male">Male</SelectItem>
+                <SelectItem value="Female">Female</SelectItem>
+                <SelectItem value="Other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+            {errors.gender && (
+              <p className="mt-1 text-xs text-red-600">{errors.gender}</p>
+            )}
+          </div>
+
+          <div>
+            <Label htmlFor="dob" className="mb-1.5 block">
+              Date of birth
+            </Label>
+            <Input
+              id="dob"
+              type="date"
+              value={dob}
+              max={today}
+              onChange={(e) => {
+                setDob(e.target.value);
+                setErrors((prev) => ({ ...prev, dob: "" }));
+                setErrorMessage("");
+              }}
             />
-          </label>
-        </div>
-        <div className="mt-8">
-          <label className="block mb-2 font-medium text-slate-700">
-            Gender
-          </label>
+            {errors.dob && (
+              <p className="mt-1 text-xs text-red-600">{errors.dob}</p>
+            )}
+          </div>
 
-          <select
-            value={gender}
-            onChange={(e) => setGender(e.target.value)}
-            className="w-full border rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+          <Button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-blue-600 text-white hover:bg-blue-700"
           >
-            <option value="">Select Gender</option>
-            <option value="Male">Male</option>
-            <option value="Female">Female</option>
-            <option value="Other">Other</option>
-          </select>
-        </div>
-        <div className="mt-6">
-          <label className="block mb-2 font-medium text-slate-700">
-            Date of Birth
-          </label>
-
-          <input
-            type="date"
-            value={dob}
-            max={today}
-            onChange={(e) => setDob(e.target.value)}
-            className="w-full border rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full mt-8 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition"
-        >
-          {loading ? "Saving....." : "Save Profile"}
-        </button>
-      </form>
+            {loading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              "Save profile"
+            )}
+          </Button>
+        </form>
+      </div>
     </div>
   );
 }

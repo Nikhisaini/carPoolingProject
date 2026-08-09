@@ -1,6 +1,12 @@
 import api from "@/services/Api";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { Mail, Loader2, ArrowLeft } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
+const OTP_LENGTH = 6;
 
 function VerifyOtp() {
   const navigate = useNavigate();
@@ -8,14 +14,73 @@ function VerifyOtp() {
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const userId = location.state?.userId || "";
-  const [otp, setOtp] = useState("");
+  const [otpDigits, setOtpDigits] = useState(Array(OTP_LENGTH).fill(""));
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
+
+  const inputRefs = useRef([]);
+
+  const otp = otpDigits.join("");
+
+  const setDigit = (index, value) => {
+    setOtpDigits((prev) => {
+      const next = [...prev];
+      next[index] = value;
+      return next;
+    });
+  };
+
+  const handleDigitChange = (index, e) => {
+    const value = e.target.value.replace(/\D/g, "");
+
+    if (!value) {
+      setDigit(index, "");
+      return;
+    }
+    const char = value.slice(-1);
+    setDigit(index, char);
+    if (index < OTP_LENGTH - 1) {
+      inputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleKeyDown = (index, e) => {
+    if (e.key === "Backspace") {
+      if (otpDigits[index]) {
+        setDigit(index, "");
+      } else if (index > 0) {
+        inputRefs.current[index - 1]?.focus();
+        setDigit(index - 1, "");
+      }
+      e.preventDefault();
+    } else if (e.key === "ArrowLeft" && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    } else if (e.key === "ArrowRight" && index < OTP_LENGTH - 1) {
+      inputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handlePaste = (e) => {
+    const pasted = e.clipboardData.getData("text").replace(/\D/g, "");
+    if (!pasted) return;
+
+    e.preventDefault();
+    const chars = pasted.slice(0, OTP_LENGTH).split("");
+    const next = Array(OTP_LENGTH).fill("");
+    chars.forEach((char, i) => {
+      next[i] = char;
+    });
+    setOtpDigits(next);
+
+    const focusIndex = Math.min(chars.length, OTP_LENGTH - 1);
+    inputRefs.current[focusIndex]?.focus();
+  };
 
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
 
-    if (!otp.trim()) {
-      return alert("Please enter OTP");
+    if (otp.length !== OTP_LENGTH) {
+      return alert("Please enter the 6-digit OTP");
     }
 
     try {
@@ -40,6 +105,7 @@ function VerifyOtp() {
 
   const handleResendOtp = async () => {
     try {
+      setResending(true);
       const res = await api.post("/auth/resend-otp", {
         userId,
       });
@@ -51,72 +117,101 @@ function VerifyOtp() {
           error.message ||
           "Unable to resend OTP",
       );
+    } finally {
+      setResending(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-indigo-100 p-4">
-      <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-xl">
+    <div className="flex min-h-screen items-center justify-center bg-muted/30 px-4 py-10">
+      <div className="w-full max-w-md">
         <div className="text-center">
-          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-blue-100 text-4xl">
-            📧
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blue-50">
+            <Mail className="h-7 w-7 text-blue-600" />
           </div>
 
-          <h2 className="mt-5 text-3xl font-bold text-gray-800">
-            Verify Email
-          </h2>
+          <h1 className="mt-5 text-2xl font-semibold tracking-tight text-foreground">
+            Verify your email
+          </h1>
 
-          <p className="mt-3 text-gray-500">
+          <p className="mt-2 text-sm text-muted-foreground">
             We've sent a 6-digit verification code to your email address.
           </p>
         </div>
+
         {errorMessage && (
-          <div className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-red-700">
+          <div className="mt-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {errorMessage}
           </div>
         )}
 
         {successMessage && (
-          <div className="rounded-xl border border-green-300 bg-green-50 px-4 py-3 text-green-700">
+          <div className="mt-6 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
             {successMessage}
           </div>
         )}
-        <form onSubmit={handleVerifyOtp} className="mt-8 space-y-5">
-          <input
-            type="text"
-            maxLength={6}
-            value={otp}
-            onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
-            placeholder="Enter OTP"
-            className="w-full rounded-xl border border-gray-300 bg-gray-50 px-4 py-4 text-center text-2xl tracking-[10px] font-semibold outline-none transition focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-          />
 
-          <button
+        <form onSubmit={handleVerifyOtp} className="mt-8 space-y-6">
+          <div className="flex justify-center gap-2.5" onPaste={handlePaste}>
+            {otpDigits.map((digit, index) => (
+              <input
+                key={index}
+                ref={(el) => (inputRefs.current[index] = el)}
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={1}
+                value={digit}
+                onChange={(e) => handleDigitChange(index, e)}
+                onKeyDown={(e) => handleKeyDown(index, e)}
+                className={cn(
+                  "h-14 w-12 rounded-lg border border-border bg-background text-center text-xl font-semibold text-foreground outline-none transition-colors",
+                  "focus:border-blue-500 focus:ring-2 focus:ring-blue-100",
+                  digit && "border-blue-300 bg-blue-50/50",
+                )}
+              />
+            ))}
+          </div>
+
+          <Button
             type="submit"
             disabled={loading}
-            className="w-full rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 py-3.5 text-white font-semibold shadow-lg transition hover:shadow-xl disabled:opacity-50"
+            className="w-full bg-blue-600 text-white hover:bg-blue-700"
           >
-            {loading ? "Verifying..." : "Verify OTP"}
-          </button>
+            {loading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Verifying...
+              </>
+            ) : (
+              "Verify OTP"
+            )}
+          </Button>
         </form>
 
         <div className="mt-6 text-center">
-          <p className="text-sm text-gray-500">Didn't receive the code?</p>
+          <p className="text-sm text-muted-foreground">
+            Didn't receive the code?
+          </p>
 
           <button
+            type="button"
             onClick={handleResendOtp}
-            className="mt-3 font-semibold text-blue-600 transition hover:text-blue-800"
+            disabled={resending}
+            className="mt-2 text-sm font-medium text-blue-600 hover:text-blue-700 disabled:opacity-50"
           >
-            Resend OTP
+            {resending ? "Resending..." : "Resend OTP"}
           </button>
         </div>
 
-        <div className="mt-8 border-t pt-5">
+        <div className="mt-8 border-t border-border pt-5">
           <button
+            type="button"
             onClick={() => navigate("/register")}
-            className="w-full text-center text-gray-600 transition hover:text-blue-600"
+            className="flex w-full items-center justify-center gap-1.5 text-sm text-muted-foreground hover:text-blue-600"
           >
-            ← Back to Register
+            <ArrowLeft className="h-4 w-4" />
+            Back to register
           </button>
         </div>
       </div>

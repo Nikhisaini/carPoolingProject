@@ -1,45 +1,47 @@
 import { Bell, Menu, Search } from "lucide-react";
 
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+
 const Navbar = () => {
   return (
-    <header className="h-20 bg-white border-b border-gray-200 flex items-center justify-between px-6 shadow-sm">
+    <header className="flex h-20 items-center justify-between border-b border-border bg-background px-6 shadow-sm">
       <div className="flex items-center gap-4">
-        <button className="lg:hidden">
-          <Menu size={24} />
-        </button>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
+        <Button variant="ghost" size="icon" className="lg:hidden">
+          <Menu className="h-5 w-5" />
+        </Button>
 
-          <p className="text-sm text-gray-500">Welcome back, Admin</p>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            Dashboard
+          </h1>
+          <p className="text-sm text-muted-foreground">Welcome back, Admin</p>
         </div>
       </div>
-      <div className="hidden md:flex items-center w-96 relative">
-        <Search size={18} className="absolute left-3 text-gray-400" />
-        <input
-          type="text"
-          placeholder="Search..."
-          className="w-full pl-10 pr-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-      </div>
-      <div className="flex items-center gap-5">
-        <button className="relative">
-          <Bell size={22} />
 
-          <span className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">
+      <div className="relative hidden w-96 items-center md:flex">
+        <Search className="absolute left-3 h-4 w-4 text-muted-foreground" />
+        <Input placeholder="Search..." className="pl-10" />
+      </div>
+
+      <div className="flex items-center gap-5">
+        <Button variant="ghost" size="icon" className="relative">
+          <Bell className="h-5 w-5" />
+          <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-xs text-destructive-foreground">
             3
           </span>
-        </button>
+        </Button>
+
         <div className="flex items-center gap-3">
-          <img
-            src="https://i.pravatar.cc/150?img=12"
-            alt="Admin"
-            className="w-11 h-11 rounded-full object-cover"
-          />
+          <Avatar size="lg">
+            <AvatarImage src="https://i.pravatar.cc/150?img=12" alt="Admin" />
+            <AvatarFallback>A</AvatarFallback>
+          </Avatar>
 
           <div className="hidden sm:block">
-            <h3 className="font-semibold">Admin</h3>
-
-            <p className="text-xs text-gray-500">Administrator</p>
+            <h3 className="font-semibold text-foreground">Admin</h3>
+            <p className="text-xs text-muted-foreground">Administrator</p>
           </div>
         </div>
       </div>

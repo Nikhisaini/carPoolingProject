@@ -99,10 +99,10 @@ const vehicleSchema = new mongoose.Schema(
       default: "Pending",
     },
 
-    rejectionReason: {
-      type: String,
-      default: "",
-    },
+    // rejectionReason: {
+    //   type: String,
+    //   default: "",
+    // },
 
     verifiedBy: {
       type: mongoose.Schema.Types.ObjectId,

@@ -1,10 +1,12 @@
 import express from "express";
 import authMiddleware from "../middleware/authMiddleware.js";
 import {
-  addlicence,
+  addLicence,
   checkApprovedLicence,
 } from "../controller/licenceController.js";
 import uploadLicence from "../middleware/uploadLicence.js";
+import { validateAddLicence } from "../validations/licence.validation.js";
+import multerErrorHandler from "../middleware/multerErrorHandler.js";
 
 const router = express.Router();
 
@@ -21,7 +23,9 @@ router.post(
       maxCount: 1,
     },
   ]),
-  addlicence,
+  multerErrorHandler,
+  validateAddLicence,
+  addLicence,
 );
 router.get("/check-approved", authMiddleware, checkApprovedLicence);
 export default router;

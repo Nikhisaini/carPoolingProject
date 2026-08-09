@@ -1,4 +1,11 @@
 import User from "../model/user.js";
+import fs from "fs";
+
+const deleteFile = (filePath) => {
+  if (filePath && fs.existsSync(filePath)) {
+    fs.unlinkSync(filePath);
+  }
+};
 
 const getProfile = async (req, res) => {
   try {
@@ -49,10 +56,10 @@ const updateProfile = async (req, res) => {
       });
     }
     const today = new Date();
-    if (!birthDate > today) {
+    if (birthDate > today) {
       return res.status(400).json({
         success: false,
-        message: "Cate of birth cannot be in the future.",
+        message: "Date of birth cannot be in the future.",
       });
     }
     let age = today.getFullYear() - birthDate.getFullYear();
@@ -68,7 +75,7 @@ const updateProfile = async (req, res) => {
     if (age < 18) {
       return res.status(400).json({
         success: false,
-        message: "You must be at least 10 years old",
+        message: "You must be at least 18 years old.",
       });
     }
 
@@ -80,6 +87,12 @@ const updateProfile = async (req, res) => {
       profileCompleted: true,
     };
     if (req.file) {
+      const user = await User.findById(userId);
+
+      if (user?.profileImage) {
+        deleteFile(user.profileImage);
+      }
+
       updateData.profileImage = req.file.path;
     }
     const updatedUser = await User.findByIdAndUpdate(userId, updateData, {
@@ -104,16 +117,24 @@ const updateProfile = async (req, res) => {
 const deleteProfile = async (req, res) => {
   try {
     const userId = req.user._id;
-    await User.findByIdAndDelete(userId, {
-      isBlocked: true,
-      deletedAt: new Date(),
-    });
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+    deleteFile(user.profileImage);
+    await User.findByIdAndDelete(userId);
     return res.status(200).json({
       success: true,
       message: "Account deleted successfully",
     });
   } catch (error) {
-    console.log(error);
+    console.log("Delete Profile Error:", error);
+
     return res.status(500).json({
       success: false,
       message: "Internal server error",

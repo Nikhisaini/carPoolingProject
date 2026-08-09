@@ -1,3 +1,4 @@
+import fs from "fs";
 import Licence from "../model/licence.js";
 import FuelType from "../model/fuelType.js";
 import LicenceCategory from "../model/licenceCategory.js";
@@ -5,6 +6,12 @@ import LicenceCategoryMapping from "../model/LicenceCategoryMapping.js";
 import Vehicle from "../model/vehicle.js";
 import VehicleType from "../model/vehicleType.js";
 import VehicleLicenceMapping from "../model/vehicleLicenceMapping.js";
+
+const deleteFile = (filePath) => {
+  if (filePath && fs.existsSync(filePath)) {
+    fs.unlinkSync(filePath);
+  }
+};
 
 const validateVehicle = async ({ licence, vehicleTypeId, fuelTypeId }) => {
   const vehicleTypeData = await VehicleType.findOne({
@@ -306,18 +313,24 @@ const updateVehicle = async (req, res) => {
     vehicle.seatingCapacity = seatingCapacity || vehicle.seatingCapacity;
 
     if (req.files?.vehicleImages) {
+      vehicle.vehicleImages.forEach((imagePath) => {
+        deleteFile(imagePath);
+      });
+
       vehicle.vehicleImages = req.files.vehicleImages.map((file) => file.path);
     }
-
     if (req.files?.rcFrontImage) {
+      deleteFile(vehicle.rcFrontImage);
       vehicle.rcFrontImage = req.files.rcFrontImage[0].path;
     }
-
     if (req.files?.rcBackImage) {
+      deleteFile(vehicle.rcBackImage);
+
       vehicle.rcBackImage = req.files.rcBackImage[0].path;
     }
-
     if (req.files?.insuranceImage) {
+      deleteFile(vehicle.insuranceImage);
+
       vehicle.insuranceImage = req.files.insuranceImage[0].path;
     }
     vehicle.verificationStatus = "Pending";
@@ -355,6 +368,14 @@ const deleteVehicle = async (req, res) => {
         message: "Vehicle not found",
       });
     }
+
+    vehicle.vehicleImages.forEach((imagePath) => {
+      deleteFile(imagePath);
+    });
+
+    deleteFile(vehicle.rcFrontImage);
+    deleteFile(vehicle.rcBackImage);
+    deleteFile(vehicle.insuranceImage);
 
     await Vehicle.findByIdAndDelete(id);
     return res.status(200).json({

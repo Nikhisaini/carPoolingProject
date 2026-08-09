@@ -1,11 +1,26 @@
 import api from "@/services/Api";
 import React, { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import {
+  Mail,
+  Phone,
+  CalendarDays,
+  User,
+  Cake,
+  Loader2,
+  ShieldCheck,
+  ShieldAlert,
+  Pencil,
+} from "lucide-react";
+
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 
 function Profile() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState(false);
 
   const getProfile = async () => {
     try {
@@ -22,136 +37,211 @@ function Profile() {
     getProfile();
   }, []);
 
-  if (loading) {
-    return <h2>Loading....</h2>;
-  }
-
   const handleDelete = async () => {
-    const ok = window.confirm("Are yoi sure you want to deltet your account");
+    const ok = window.confirm("Are you sure you want to delete your account");
+    if (!ok) return;
+
     try {
+      setDeleting(true);
       const res = await api.delete("/profile/delete");
       alert(res.data.message);
       localStorage.removeItem("token");
       navigate("/login");
     } catch (error) {
       console.log(error);
+    } finally {
+      setDeleting(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-muted/30">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading profile...
+        </div>
+      </div>
+    );
+  }
+
+  const fullName = `${user?.firstName || ""} ${user?.lastName || ""}`.trim();
+  const memberSince = user?.createdAt
+    ? new Date(user.createdAt).getFullYear()
+    : "—";
+
+  const infoRows = [
+    {
+      icon: User,
+      label: "First name",
+      value: user?.firstName || "—",
+    },
+    {
+      icon: User,
+      label: "Last name",
+      value: user?.lastName || "—",
+    },
+    {
+      icon: User,
+      label: "Gender",
+      value: user?.gender || "Not added",
+    },
+    {
+      icon: Cake,
+      label: "Date of birth",
+      value: user?.dob ? new Date(user.dob).toLocaleDateString() : "Not added",
+    },
+    {
+      icon: Mail,
+      label: "Email",
+      value: user?.email || "—",
+    },
+    {
+      icon: Phone,
+      label: "Phone",
+      value: user?.phoneNumber || "—",
+    },
+    {
+      icon: CalendarDays,
+      label: "Member since",
+      value: user?.createdAt
+        ? new Date(user.createdAt).toLocaleDateString()
+        : "—",
+    },
+  ];
+
   return (
-    <div className="min-h-screen bg-gray-100 ">
-      <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-lg overflow-hidden">
-        <div className="h-40 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600"></div>
-        <div className="px-8 pb-8">
-          <div className="-mt-16 flex flex-col md:flex-row md:items-end md:justify-between">
-            <div className="flex flex-col md:flex-row md:items-center gap-6">
-              <img
+    <div className="min-h-screen bg-muted/30 py-10">
+      <div className="mx-auto max-w-2xl px-4">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-4">
+            <Avatar className="h-16 w-16">
+              <AvatarImage
                 src={
                   user?.profileImage
                     ? `http://localhost:8081/${user.profileImage}`
-                    : "https://ui-avatars.com/api/?name=User&background=2563eb&color=fff"
+                    : undefined
                 }
-                alt="Profile"
-                className="w-32 h-32 rounded-full border-4 border-white object-cover shadow-lg"
+                alt={fullName}
               />
+              <AvatarFallback className="text-lg font-semibold">
+                {fullName ? fullName.charAt(0).toUpperCase() : "U"}
+              </AvatarFallback>
+            </Avatar>
 
-              <div className="mt-4 md:mt-0">
-                <h2 className="text-3xl font-bold text-gray-800">
-                  {user?.firstName} {user?.lastName}
-                </h2>
-
-                <p className="text-gray-500">{user?.email}</p>
-
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-semibold tracking-tight text-foreground">
+                  {fullName || "Unnamed User"}
+                </h1>
                 {user?.isVerified ? (
-                  <span className="inline-block mt-3 px-4 py-1 rounded-full bg-green-100 text-green-700 text-sm font-medium">
-                    Verified
-                  </span>
+                  <ShieldCheck className="h-4 w-4 text-emerald-600" />
                 ) : (
-                  <span className="inline-block mt-3 px-4 py-1 rounded-full bg-red-100 text-red-700 text-sm font-medium">
-                    NotVerified
-                  </span>
+                  <ShieldAlert className="h-4 w-4 text-amber-600" />
                 )}
               </div>
+              <p className="text-sm text-muted-foreground">{user?.email}</p>
             </div>
-
-            {!user?.profileCompleted ? (
-              <Link
-                to="/complete-profile"
-                className="mt-6 md:mt-0 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-semibold transition"
-              >
-                Complete Profile
-              </Link>
-            ) : (
-              <Link
-                to="/edit-profile"
-                className="mt-6 md:mt-0 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-semibold transition"
-              >
-                Edit Profile
-              </Link>
-            )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-10">
-            <div className="bg-gray-50 rounded-xl p-5 shadow-sm">
-              <h3 className="text-lg font-semibold mb-4">
-                Personal Information
-              </h3>
+          <Button
+            type="button"
+            onClick={() =>
+              navigate(
+                user?.profileCompleted ? "/edit-profile" : "/complete-profile",
+              )
+            }
+            className="inline-flex items-center gap-2 whitespace-nowrap bg-blue-600 text-white hover:bg-blue-700"
+          >
+            <Pencil className="h-3.5 w-3.5 shrink-0" />
+            <span>
+              {user?.profileCompleted ? "Edit profile" : "Complete profile"}
+            </span>
+          </Button>
+        </div>
 
-              <div className="space-y-3">
-                <div>
-                  <p className="text-sm text-gray-500">First Name</p>
-                  <p className="font-medium">{user?.firstName}</p>
-                </div>
+        <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-2">
+          <div className="rounded-xl border border-border bg-background px-4 py-3">
+            <p className="text-xs text-muted-foreground">Account status</p>
+            <p
+              className={`mt-0.5 text-sm font-semibold ${
+                user?.isVerified ? "text-emerald-600" : "text-amber-600"
+              }`}
+            >
+              {user?.isVerified ? "Verified" : "Not verified"}
+            </p>
+          </div>
+          <div className="rounded-xl border border-border bg-background px-4 py-3">
+            <p className="text-xs text-muted-foreground">Member since</p>
+            <p className="mt-0.5 text-sm font-semibold text-foreground">
+              {memberSince}
+            </p>
+          </div>
+        </div>
 
-                <div>
-                  <p className="text-sm text-gray-500">Last Name</p>
-                  <p className="font-medium">{user?.lastName}</p>
-                </div>
+        <div className="mt-8">
+          <h2 className="mb-3 text-sm font-semibold text-foreground">
+            Account details
+          </h2>
 
-                <div>
-                  <p className="text-sm text-gray-500">Gender</p>
-                  <p className="font-medium">{user?.gender || "Not Added"}</p>
-                </div>
-
-                <div>
-                  <p className="text-sm text-gray-500">Date of Birth</p>
-                  <p className="font-medium">
-                    {user?.dob
-                      ? new Date(user.dob).toLocaleDateString()
-                      : "Not Added"}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-gray-50 rounded-xl p-5 shadow-sm">
-              <h3 className="text-lg font-semibold mb-4">
-                Contact Information
-              </h3>
-
-              <div className="space-y-3">
-                <div>
-                  <p className="text-sm text-gray-500">Email</p>
-                  <p className="font-medium">{user?.email}</p>
-                </div>
-
-                <div>
-                  <p className="text-sm text-gray-500">Phone</p>
-                  <p className="font-medium">{user?.phoneNumber}</p>
-                </div>
-
-                <div>
-                  <p className="text-sm text-gray-500">Member Since</p>
-                  <p className="font-medium">
-                    {new Date(user?.createdAt).toLocaleDateString()}
-                  </p>
-                </div>
-                <button
-                  onClick={handleDelete}
-                  className="mt-6 md:mt-0 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl font-semibold transition"
+          <div className="overflow-hidden rounded-xl border border-border bg-background">
+            {infoRows.map((row, index) => {
+              const Icon = row.icon;
+              return (
+                <div
+                  key={row.label}
+                  className={`flex items-center justify-between gap-4 px-4 py-3 ${
+                    index !== infoRows.length - 1
+                      ? "border-b border-border"
+                      : ""
+                  }`}
                 >
-                  Delete Account
-                </button>
+                  <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
+                    <Icon className="h-4 w-4" />
+                    {row.label}
+                  </div>
+                  <p className="truncate text-sm font-medium text-foreground">
+                    {row.value}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="mt-10">
+          <h2 className="mb-3 text-sm font-semibold text-foreground">
+            Danger zone
+          </h2>
+
+          <div className="overflow-hidden rounded-xl border border-red-200 bg-background">
+            <div className="flex flex-col gap-4 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-medium text-foreground">
+                  Delete account
+                </p>
+                <p className="mt-0.5 text-sm text-muted-foreground">
+                  Permanently remove your account and all associated data. This
+                  action cannot be undone.
+                </p>
               </div>
+
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={handleDelete}
+                disabled={deleting}
+                className="shrink-0"
+              >
+                {deleting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  "Delete account"
+                )}
+              </Button>
             </div>
           </div>
         </div>

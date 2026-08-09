@@ -8,6 +8,7 @@ import {
   updateVehicle,
 } from "../controller/vehicleController.js";
 import uploadVehicel from "../middleware/uploadVehicle.js";
+import multerErrorHandler from "../middleware/multerErrorHandler.js";
 
 const router = express.Router();
 
@@ -32,6 +33,7 @@ router.post(
       maxCount: 1,
     },
   ]),
+  multerErrorHandler,
   addVehicle,
 );
 
@@ -58,6 +60,7 @@ router.put(
       maxCount: 1,
     },
   ]),
+  multerErrorHandler,
   updateVehicle,
 );
 router.delete("/delete/:id", authMiddleware, deleteVehicle);

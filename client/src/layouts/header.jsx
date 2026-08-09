@@ -1,16 +1,17 @@
+import { logout } from "@/redux/slices/authSlice";
 import React, { useState, useEffect, useRef } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
 
 function Header() {
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef(null);
-  const token = localStorage.getItem("token");
-  const isLoggedIn = !!token;
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const { user, isAuthenticated } = useSelector((state) => state.auth);
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+    dispatch(logout());
     setOpen(false);
     navigate("/login");
   };
@@ -21,11 +22,9 @@ function Header() {
         setOpen(false);
       }
     };
-
     if (open) {
       document.addEventListener("mousedown", handleClickOutside);
     }
-
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
@@ -58,8 +57,17 @@ function Header() {
 
             {open && (
               <div className="absolute right-0 mt-3 w-48 bg-white rounded-lg shadow-lg border">
-                {isLoggedIn ? (
+                {isAuthenticated ? (
                   <>
+                    <div className="border-b px-4 py-3">
+                      <p className="font-semibold text-gray-900">
+                        {user?.firstName} {user?.lastName}
+                      </p>
+
+                      <p className="truncate text-sm text-gray-500">
+                        {user?.email}
+                      </p>
+                    </div>
                     <Link
                       to="/profile"
                       className="block px-4 py-3 hover:bg-gray-100"

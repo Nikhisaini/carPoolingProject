@@ -1,5 +1,20 @@
 import api from "@/services/Api";
 import React, { useEffect, useRef, useState } from "react";
+import {
+  IdCard,
+  Upload,
+  CheckCircle2,
+  Loader2,
+  X,
+  ImageIcon,
+  Hash,
+  Tag,
+} from "lucide-react";
+
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 function AddLicence() {
   const [loading, setLoading] = useState(false);
@@ -10,13 +25,8 @@ function AddLicence() {
   const backInputRef = useRef(null);
   const [formData, setFormData] = useState({
     licenceNumber: "",
-    // holderName: "",
-    // dob: "",
-    // issueDate: "",
-    // expiryDate: "",
     categories: [],
   });
-  const today = new Date().toISOString().split("T")[0];
   const [frontImage, setFrontImage] = useState(null);
   const [backImage, setbackImage] = useState(null);
 
@@ -41,17 +51,79 @@ function AddLicence() {
       ...prev,
       [name]: value,
     }));
+    setErrorMessage("");
   };
 
-  const handleCategoryChange = (e) => {
-    const { value, checked } = e.target;
-
+  const toggleCategory = (id) => {
     setFormData((prev) => ({
       ...prev,
-      categories: checked
-        ? [...prev.categories, value]
-        : prev.categories.filter((id) => id !== value),
+      categories: prev.categories.includes(id)
+        ? prev.categories.filter((catId) => catId !== id)
+        : [...prev.categories, id],
     }));
+    setErrorMessage("");
+  };
+
+  const validateImage = (file) => {
+    if (!file) {
+      return "Please select an image.";
+    }
+
+    const allowedTypes = [
+      "image/jpeg",
+      "image/jpg",
+      "image/png",
+      "image/webp",
+      "image/avif",
+    ];
+
+    if (!allowedTypes.includes(file.type)) {
+      return "Only JPG, JPEG, PNG, WEBP and AVIF images are allowed.";
+    }
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      return "Image size must not exceed 5 MB.";
+    }
+    if (file.size === 0) {
+      return "Selected image is empty.";
+    }
+    return null;
+  };
+
+  const handleFrontImageChange = (e) => {
+    const file = e.target.files[0];
+    const error = validateImage(file);
+    if (error) {
+      setErrorMessage(error);
+      e.target.value = "";
+      setFrontImage(null);
+      return;
+    }
+    setErrorMessage("");
+    setFrontImage(file);
+  };
+
+  const handleBackImageChange = (e) => {
+    const file = e.target.files[0];
+    const error = validateImage(file);
+    if (error) {
+      setErrorMessage(error);
+      e.target.value = "";
+      setbackImage(null);
+      return;
+    }
+    setErrorMessage("");
+    setbackImage(file);
+  };
+
+  const clearFrontImage = () => {
+    setFrontImage(null);
+    if (frontInputRef.current) frontInputRef.current.value = "";
+  };
+
+  const clearBackImage = () => {
+    setbackImage(null);
+    if (backInputRef.current) backInputRef.current.value = "";
   };
 
   const handleSubmit = async (e) => {
@@ -62,28 +134,32 @@ function AddLicence() {
       setLoading(true);
       const data = new FormData();
       data.append("licenceNumber", formData.licenceNumber);
-      // data.append("holderName", formData.holderName);
-      // data.append("dob", formData.dob);
-      // data.append("issueDate", formData.issueDate);
-      // data.append("expiryDate", formData.expiryDate);
       formData.categories.forEach((category) => {
         data.append("categories", category);
       });
-
       if (!frontImage) {
         setErrorMessage("Please upload front image.");
         return;
       }
-
       if (!backImage) {
         setErrorMessage("Please upload back image.");
         return;
       }
-
       if (formData.categories.length === 0) {
         setErrorMessage("Please select at least one category.");
         return;
       }
+      const frontError = validateImage(frontImage);
+      if (frontError) {
+        setErrorMessage(frontError);
+        return;
+      }
+      const backError = validateImage(backImage);
+      if (backError) {
+        setErrorMessage(backError);
+        return;
+      }
+
       data.append("frontImage", frontImage);
       data.append("backImage", backImage);
       const res = await api.post("/licence/add", data, {
@@ -95,10 +171,6 @@ function AddLicence() {
 
       setFormData({
         licenceNumber: "",
-        // holderName: "",
-        // dob: "",
-        // issueDate: "",
-        // expiryDate: "",
         categories: [],
       });
       setFrontImage(null);
@@ -117,172 +189,237 @@ function AddLicence() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50 to-indigo-100 py-12 px-4">
-      <div className="max-w-4xl mx-auto">
-        <form
-          onSubmit={handleSubmit}
-          className="bg-white rounded-3xl shadow-2xl overflow-hidden"
-        >
-          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-10 py-8">
-            <h1 className="text-3xl font-bold text-white">
-              Driving Licence Verification
-            </h1>
-            <p className="text-blue-100 mt-2">
-              Upload your driving licence for quick verification.
-            </p>
-          </div>
-
-          <div className="p-8 space-y-8">
-            {errorMessage && (
-              <div className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-red-700">
-                {errorMessage}
+    <div className="min-h-screen bg-muted/30 px-4 py-12">
+      <div className="mx-auto max-w-2xl">
+        <form onSubmit={handleSubmit}>
+          <div className="overflow-hidden rounded-2xl border border-border bg-background shadow-sm">
+            <div className="flex items-center gap-3 border-b border-border px-7 py-5">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50">
+                <IdCard className="h-5 w-5 text-blue-600" />
               </div>
-            )}
-
-            {successMessage && (
-              <div className="rounded-xl border border-green-300 bg-green-50 px-4 py-3 text-green-700">
-                {successMessage}
-              </div>
-            )}
-            <div className="grid md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Licence Number
-                </label>
-                <input
+                <h1 className="text-lg font-semibold tracking-tight text-foreground">
+                  Driving licence verification
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                  Upload your driving licence for quick verification.
+                </p>
+              </div>
+            </div>
+
+            <div className="px-7 py-6">
+              {errorMessage && (
+                <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  {errorMessage}
+                </div>
+              )}
+
+              {successMessage && (
+                <div className="mb-6 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                  {successMessage}
+                </div>
+              )}
+
+              <section>
+                <div className="mb-3 flex items-center gap-1.5">
+                  <Hash className="h-3.5 w-3.5 text-muted-foreground" />
+                  <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Licence details
+                  </h2>
+                </div>
+
+                <Label htmlFor="licenceNumber" className="mb-1.5 block">
+                  Licence number
+                </Label>
+                <Input
+                  id="licenceNumber"
                   type="text"
                   name="licenceNumber"
                   value={formData.licenceNumber}
                   onChange={handleChange}
+                  placeholder="e.g. DL-1420110012345"
                   required
-                  className="w-full rounded-xl border border-gray-300 px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-                  placeholder="Enter licence number"
                 />
-              </div>
+              </section>
 
-              {/* <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Holder Name
-                </label>
-                <input
-                  type="text"
-                  name="holderName"
-                  value={formData.holderName}
-                  onChange={handleChange}
-                  required
-                  className="w-full rounded-xl border border-gray-300 px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-                  placeholder="Enter holder name"
-                />
-              </div>
+              <div className="my-6 h-px bg-border" />
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Date of Birth
-                </label>
-                <input
-                  type="date"
-                  name="dob"
-                  max={today}
-                  value={formData.dob}
-                  required
-                  onChange={handleChange}
-                  className="w-full rounded-xl border border-gray-300 px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none"
-                />
-              </div>
+              <section>
+                <div className="mb-3 flex items-center gap-1.5">
+                  <Tag className="h-3.5 w-3.5 text-muted-foreground" />
+                  <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Vehicle categories
+                  </h2>
+                </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Issue Date
-                </label>
-                <input
-                  type="date"
-                  name="issueDate"
-                  value={formData.issueDate}
-                  onChange={handleChange}
-                  required
-                  className="w-full rounded-xl border border-gray-300 px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none"
-                />
-              </div>
+                <div className="flex flex-wrap gap-2">
+                  {licenceCategories.map((item) => {
+                    const isSelected = formData.categories.includes(item._id);
+                    return (
+                      <button
+                        key={item._id}
+                        type="button"
+                        onClick={() => toggleCategory(item._id)}
+                        className={cn(
+                          "flex items-center gap-1.5 rounded-lg border px-4 py-2 text-sm font-medium transition-all",
+                          isSelected
+                            ? "border-blue-600 bg-blue-600 text-white shadow-sm"
+                            : "border-border bg-background text-foreground hover:border-blue-300 hover:bg-blue-50",
+                        )}
+                      >
+                        {isSelected && <CheckCircle2 className="h-3.5 w-3.5" />}
+                        {item.name}
+                      </button>
+                    );
+                  })}
+                </div>
+                {formData.categories.length === 0 && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Select at least one category that applies to your licence.
+                  </p>
+                )}
+              </section>
 
-              <div className="md:col-span-2">
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Expiry Date
-                </label>
-                <input
-                  type="date"
-                  name="expiryDate"
-                  value={formData.expiryDate}
-                  onChange={handleChange}
-                  required
-                  className="w-full rounded-xl border border-gray-300 px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none"
-                />
-              </div> */}
-            </div>
-            <div>
-              <h2 className="text-lg font-semibold text-gray-800 mb-4">
-                Vehicle Categories
-              </h2>
+              <div className="my-6 h-px bg-border" />
 
-              <div className="flex flex-wrap gap-4">
-                {licenceCategories.map((item) => (
+              <section>
+                <div className="mb-3 flex items-center gap-1.5">
+                  <ImageIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                  <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Document images
+                  </h2>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
                   <label
-                    key={item._id}
-                    className="flex items-center gap-3 px-5 py-3 border rounded-xl cursor-pointer hover:bg-blue-50 hover:border-blue-500 transition"
+                    className={cn(
+                      "group flex min-h-[168px] cursor-pointer flex-col items-center justify-center gap-2.5 rounded-xl border-2 border-dashed p-6 text-center transition-colors",
+                      frontImage
+                        ? "border-emerald-300 bg-emerald-50/40"
+                        : "border-border bg-muted/20 hover:border-blue-400 hover:bg-blue-50/60",
+                    )}
                   >
                     <input
-                      type="checkbox"
-                      value={item._id}
-                      checked={formData.categories.includes(item._id)}
-                      onChange={handleCategoryChange}
-                      className="h-5 w-5 text-blue-600 rounded"
+                      type="file"
+                      ref={frontInputRef}
+                      accept="image/*"
+                      onChange={handleFrontImageChange}
+                      className="hidden"
                     />
 
-                    <span className="font-medium">{item.name}</span>
+                    {frontImage ? (
+                      <>
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100">
+                          <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                        </div>
+                        <div>
+                          <p className="max-w-[180px] truncate text-sm font-medium text-emerald-700">
+                            {frontImage.name}
+                          </p>
+                          <span
+                            role="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              clearFrontImage();
+                            }}
+                            className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-red-600"
+                          >
+                            <X className="h-3 w-3" />
+                            Remove
+                          </span>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted transition-colors group-hover:bg-blue-100">
+                          <Upload className="h-5 w-5 text-muted-foreground transition-colors group-hover:text-blue-600" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-foreground">
+                            Front image
+                          </p>
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            JPG, PNG, WEBP · up to 5MB
+                          </p>
+                        </div>
+                      </>
+                    )}
                   </label>
-                ))}
-              </div>
+
+                  <label
+                    className={cn(
+                      "group flex min-h-[168px] cursor-pointer flex-col items-center justify-center gap-2.5 rounded-xl border-2 border-dashed p-6 text-center transition-colors",
+                      backImage
+                        ? "border-emerald-300 bg-emerald-50/40"
+                        : "border-border bg-muted/20 hover:border-blue-400 hover:bg-blue-50/60",
+                    )}
+                  >
+                    <input
+                      type="file"
+                      ref={backInputRef}
+                      accept="image/*"
+                      onChange={handleBackImageChange}
+                      className="hidden"
+                    />
+
+                    {backImage ? (
+                      <>
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100">
+                          <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                        </div>
+                        <div>
+                          <p className="max-w-[180px] truncate text-sm font-medium text-emerald-700">
+                            {backImage.name}
+                          </p>
+                          <span
+                            role="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              clearBackImage();
+                            }}
+                            className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-red-600"
+                          >
+                            <X className="h-3 w-3" />
+                            Remove
+                          </span>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted transition-colors group-hover:bg-blue-100">
+                          <ImageIcon className="h-5 w-5 text-muted-foreground transition-colors group-hover:text-blue-600" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-foreground">
+                            Back image
+                          </p>
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            JPG, PNG, WEBP · up to 5MB
+                          </p>
+                        </div>
+                      </>
+                    )}
+                  </label>
+                </div>
+              </section>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="border-2 border-dashed border-gray-300 rounded-2xl p-8 text-center hover:border-blue-500 hover:bg-blue-50 transition">
-                <h3 className="font-semibold text-lg mb-3">Front Image</h3>
-
-                <input
-                  type="file"
-                  ref={frontInputRef}
-                  onChange={(e) => setFrontImage(e.target.files[0])}
-                />
-
-                {frontImage && (
-                  <p className="mt-3 text-sm text-green-600">
-                    {frontImage.name}
-                  </p>
+            <div className="border-t border-border bg-muted/20 px-7 py-5">
+              <Button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-blue-600 text-white hover:bg-blue-700"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Submitting...
+                  </>
+                ) : (
+                  "Submit for verification"
                 )}
-              </div>
-
-              <div className="border-2 border-dashed border-gray-300 rounded-2xl p-8 text-center hover:border-blue-500 hover:bg-blue-50 transition">
-                <h3 className="font-semibold text-lg mb-3">Back Image</h3>
-
-                <input
-                  type="file"
-                  ref={backInputRef}
-                  onChange={(e) => setbackImage(e.target.files[0])}
-                />
-
-                {backImage && (
-                  <p className="mt-3 text-sm text-green-600">
-                    {backImage.name}
-                  </p>
-                )}
-              </div>
+              </Button>
             </div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 rounded-2xl text-lg font-semibold shadow-lg hover:scale-[1.02] hover:shadow-xl transition duration-300"
-            >
-              {loading ? "Submitting..." : "Submit for Verification"}
-            </button>
           </div>
         </form>
       </div>

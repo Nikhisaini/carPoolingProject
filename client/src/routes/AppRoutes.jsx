@@ -13,6 +13,15 @@ import MyVehicle from "@/pages/user/vehicle/MyVehicle";
 import VehicleDetail from "@/pages/user/vehicle/VehicleDetail";
 import EditVehicle from "@/pages/user/vehicle/EditVehicle";
 import AdminRoutes from "./AdminRoutes";
+import ProtectedRoute from "./ProtectedRoute";
+import Unauthorized from "@/pages/Unauthorized/Unauthorized";
+import PublishRide from "@/pages/user/publishride/PublishRide";
+import PublishRideDateTime from "@/pages/user/publishride/PublishRideDateTime";
+import PublishRideVehicle from "@/pages/user/publishride/PublishRideVehicle";
+import PublishRideSeats from "@/pages/user/publishride/PublishRideSeats";
+import PublishRidePreferences from "@/pages/user/publishride/PublishRidePreferences";
+import PublishRidePrice from "@/pages/user/publishride/PublishRidePrice";
+import PublishRideReview from "@/pages/user/publishride/PublishRideReview";
 
 function AppRoutes() {
   return (
@@ -22,16 +31,39 @@ function AppRoutes() {
         <Route path="/register" element={<Register />} />
         <Route path="/verify-otp" element={<VerifyOtp />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/complete-profile" element={<CompleteProfile />} />
-        <Route path="/edit-profile" element={<EditProfile />} />
-        <Route path="/add-licence" element={<AddLicence />} />
-        <Route path="/add-vehicle" element={<AddVehicle />} />
-        <Route path="/my-vehicle" element={<MyVehicle />} />
-        <Route path="/vehicle/:id" element={<VehicleDetail />} />
-        <Route path="/edit-vehicle/:id" element={<EditVehicle />} />
+        <Route path="/unauthorized" element={<Unauthorized />} />
+        <Route element={<ProtectedRoute />}>
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/complete-profile" element={<CompleteProfile />} />
+          <Route path="/edit-profile" element={<EditProfile />} />
+          <Route path="/add-licence" element={<AddLicence />} />
+          <Route path="/add-vehicle" element={<AddVehicle />} />
+          <Route path="/my-vehicle" element={<MyVehicle />} />
+          <Route path="/vehicle/:id" element={<VehicleDetail />} />
+          <Route path="/edit-vehicle/:id" element={<EditVehicle />} />
+          <Route path="/publish-ride" element={<PublishRide />} />
+          <Route
+            path="/publish-ride/date-time"
+            element={<PublishRideDateTime />}
+          />{" "}
+          <Route
+            path="/publish-ride/vehicle"
+            element={<PublishRideVehicle />}
+          />
+          <Route path="/publish-ride/seats" element={<PublishRideSeats />} />
+          <Route
+            path="/publish-ride/preferences"
+            element={<PublishRidePreferences />}
+          />
+          <Route path="/publish-ride/price" element={<PublishRidePrice />} />
+          <Route path="/publish-ride/review" element={<PublishRideReview />} />
+          ```
+        </Route>
       </Route>
-      <Route path="/admin/*" element={<AdminRoutes />}></Route>
+
+      <Route element={<ProtectedRoute allowedRoles={["Admin"]} />}>
+        <Route path="/admin/*" element={<AdminRoutes />} />
+      </Route>
     </Routes>
   );
 }
