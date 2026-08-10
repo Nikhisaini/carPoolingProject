@@ -1,11 +1,137 @@
 import mongoose from "mongoose";
 import Ride from "../model/ride.js";
-import RideLocation from "../model/RideLocation.js";
 import RidePreference from "../model/ridePreference.js";
 import validateRideVehicle from "../validations/validateRide.js";
 import validateRideSearch from "../validations/validateRideSearch.js";
 import { searchRides as searchRidesService } from "../services/rideService.js";
+import RideLocation from "../model/rideLocation.js";
+import Licence from "../model/licence.js";
+import Vehicle from "../model/vehicle.js";
 
+const getPublishRideEligibility = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const licence = await Licence.findOne({
+      userId,
+    }).lean();
+
+    if (!licence) {
+      return res.status(200).json({
+        success: true,
+        eligible: false,
+        status: "LICENCE_NOT_ADDED",
+        message: "Please add your driving licence before publishing a ride.",
+        licence: null,
+        vehicles: [],
+      });
+    }
+    if (licence.verificationStatus === "Pending") {
+      return res.status(200).json({
+        success: true,
+        eligible: false,
+        status: "LICENCE_PENDING",
+        message: "Your driving licence is waiting for admin approval.",
+        licence: {
+          id: licence._id,
+          verificationStatus: licence.verificationStatus,
+        },
+        vehicles: [],
+      });
+    }
+
+    if (licence.verificationStatus === "Rejected") {
+      return res.status(200).json({
+        success: true,
+        eligible: false,
+        status: "LICENCE_REJECTED",
+        message:
+          "Your driving licence was rejected. Please submit your licence again.",
+        licence: {
+          id: licence._id,
+          verificationStatus: licence.verificationStatus,
+        },
+        vehicles: [],
+      });
+    }
+
+    const vehicles = await Vehicle.find({
+      ownerId: userId,
+      drivingLicenceId: licence._id,
+      isActive: true,
+    })
+      .populate("vehicleTypeId", "name")
+      .populate("fuelTypeId", "name")
+      .lean();
+
+    if (vehicles.length === 0) {
+      return res.status(200).json({
+        success: true,
+        eligible: false,
+        status: "VEHICLE_NOT_ADDED",
+        message:
+          "Your licence is approved. Please add a vehicle before publishing a ride.",
+        licence: {
+          id: licence._id,
+          verificationStatus: licence.verificationStatus,
+        },
+        vehicles: [],
+      });
+    }
+
+    const approvedVehicles = vehicles.filter(
+      (vehicle) => vehicle.verificationStatus === "Approved",
+    );
+
+    if (approvedVehicles.length > 0) {
+      return res.status(200).json({
+        success: true,
+        eligible: true,
+        status: "ELIGIBLE",
+        message: "You are eligible to publish a ride.",
+        licence: {
+          id: licence._id,
+          verificationStatus: licence.verificationStatus,
+        },
+        vehicles: approvedVehicles,
+      });
+    }
+    const hasPendingVehicle = vehicles.some(
+      (vehicle) => vehicle.verificationStatus === "Pending",
+    );
+
+    if (hasPendingVehicle) {
+      return res.status(200).json({
+        success: true,
+        eligible: false,
+        status: "VEHICLE_PENDING",
+        message: "Your vehicle is waiting for admin approval.",
+        licence: {
+          id: licence._id,
+          verificationStatus: licence.verificationStatus,
+        },
+        vehicles,
+      });
+    }
+    return res.status(200).json({
+      success: true,
+      eligible: false,
+      status: "VEHICLE_REJECTED",
+      message: "Your vehicle was rejected. Please add another vehicle.",
+      licence: {
+        id: licence._id,
+        verificationStatus: licence.verificationStatus,
+      },
+      vehicles,
+    });
+  } catch (error) {
+    console.error("Publish Ride Eligibility Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to check publish ride eligibility.",
+    });
+  }
+};
 const publishRide = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -272,6 +398,32 @@ const publishRide = async (req, res) => {
   }
 };
 
+const getMyRides = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    const rides = await Ride.find({
+      ownerId: userId,
+    })
+      .populate("vehicleId")
+      .populate("departureLocationId")
+      .populate("destinationLocationId")
+      .sort({ departureAt: -1 });
+
+    return res.status(200).json({
+      success: true,
+      message: "My Rides fatched successfully",
+      rides,
+    });
+  } catch (error) {
+    console.log("Get My Rides Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
+  }
+};
+
 const getRideById = async (req, res) => {
   try {
     const { rideId } = req.params;
@@ -351,80 +503,80 @@ const getRideById = async (req, res) => {
   }
 };
 
-const getAllRides = async (req, res) => {
-  try {
-    const rides = await Ride.find({
-      status: "PUBLISHED",
-      availableSeats: { $gt: 0 },
-      departureAt: { $gt: new Date() },
-    })
-      .populate({
-        path: "ownerId",
-        select: "firstName lastName profileImage",
-      })
-      .populate({
-        path: "vehicleId",
-        select:
-          "brand model manufactureYear color registrationNumber seatingCapacity vehicleImages airCondition luggageCapacity verificationStatus vehicleTypeId fuelTypeId",
-        populate: [
-          {
-            path: "vehicleTypeId",
-            select: "name",
-          },
-          {
-            path: "fuelTypeId",
-            select: "name",
-          },
-        ],
-      })
-      .populate({
-        path: "departureLocationId",
-        select:
-          "city state country address placeName latitude longitude placeId",
-      })
-      .populate({
-        path: "destinationLocationId",
-        select:
-          "city state country address placeName latitude longitude placeId",
-      })
-      .sort({ departureAt: 1 })
-      .lean();
+// const getAllRides = async (req, res) => {
+//   try {
+//     const rides = await Ride.find({
+//       status: "PUBLISHED",
+//       availableSeats: { $gt: 0 },
+//       departureAt: { $gt: new Date() },
+//     })
+//       .populate({
+//         path: "ownerId",
+//         select: "firstName lastName profileImage",
+//       })
+//       .populate({
+//         path: "vehicleId",
+//         select:
+//           "brand model manufactureYear color registrationNumber seatingCapacity vehicleImages airCondition luggageCapacity verificationStatus vehicleTypeId fuelTypeId",
+//         populate: [
+//           {
+//             path: "vehicleTypeId",
+//             select: "name",
+//           },
+//           {
+//             path: "fuelTypeId",
+//             select: "name",
+//           },
+//         ],
+//       })
+//       .populate({
+//         path: "departureLocationId",
+//         select:
+//           "city state country address placeName latitude longitude placeId",
+//       })
+//       .populate({
+//         path: "destinationLocationId",
+//         select:
+//           "city state country address placeName latitude longitude placeId",
+//       })
+//       .sort({ departureAt: 1 })
+//       .lean();
 
-    const rideIds = rides.map((ride) => ride._id);
+//     const rideIds = rides.map((ride) => ride._id);
 
-    const preferences = await RidePreference.find({
-      rideId: {
-        $in: rideIds,
-      },
-    }).lean();
+//     const preferences = await RidePreference.find({
+//       rideId: {
+//         $in: rideIds,
+//       },
+//     }).lean();
 
-    const preferenceMap = new Map(
-      preferences.map((preference) => [
-        preference.rideId.toString(),
-        preference,
-      ]),
-    );
+//     const preferenceMap = new Map(
+//       preferences.map((preference) => [
+//         preference.rideId.toString(),
+//         preference,
+//       ]),
+//     );
 
-    const ridesWithPreferences = rides.map((ride) => ({
-      ...ride,
-      preferences: preferenceMap.get(ride._id.toString()) || null,
-    }));
+//     const ridesWithPreferences = rides.map((ride) => ({
+//       ...ride,
+//       preferences: preferenceMap.get(ride._id.toString()) || null,
+//     }));
 
-    return res.status(200).json({
-      success: true,
-      message: "Rides fetched successfully",
-      count: ridesWithPreferences.length,
-      rides: ridesWithPreferences,
-    });
-  } catch (error) {
-    console.error("Get All Rides Error:", error);
+//     return res.status(200).json({
+//       success: true,
+//       message: "Rides fetched successfully",
+//       count: ridesWithPreferences.length,
+//       rides: ridesWithPreferences,
+//     });
+//   } catch (error) {
+//     console.error("Get All Rides Error:", error);
 
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error",
-    });
-  }
-};
+//     return res.status(500).json({
+//       success: false,
+//       message: "Internal server error",
+//     });
+//   }
+// };
 
 const searchRides = async (req, res) => {
   try {
@@ -469,4 +621,11 @@ const searchRides = async (req, res) => {
     });
   }
 };
-export { publishRide, getRideById, getAllRides, searchRides };
+export {
+  publishRide,
+  getRideById,
+  // getAllRides,
+  searchRides,
+  getPublishRideEligibility,
+  getMyRides,
+};

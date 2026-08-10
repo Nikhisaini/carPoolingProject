@@ -135,15 +135,10 @@ function PublishRideReview() {
           longitude: Number(destinationLocation.longitude),
           placeId: destinationLocation.placeId || "",
         },
-
         departureAt,
-
         totalSeats: Number(totalSeats),
-
         pricePerSeat: Number(pricePerSeat),
-
         bookingMode: "AUTO",
-
         preferences: {
           smokingAllowed: Boolean(preferences.smokingAllowed),
           petsAllowed: Boolean(preferences.petsAllowed),
@@ -152,19 +147,16 @@ function PublishRideReview() {
           conversationAllowed: Boolean(preferences.conversationAllowed),
         },
       };
-
       const res = await api.post("/ride/publish", payload);
 
       if (!res.data?.success) {
         throw new Error(res.data?.message || "Unable to publish ride.");
       }
-
       navigate("/", {
         replace: true,
       });
     } catch (error) {
       console.error("Publish Ride Error:", error);
-
       setErrorMessage(
         error.response?.data?.message ||
           error.message ||

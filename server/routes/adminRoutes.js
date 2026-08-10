@@ -3,18 +3,19 @@ import authMiddleware from "../middleware/authMiddleware.js";
 import {
   approveLicence,
   approveVehicle,
+  blockUser,
   getAllLicence,
+  getAllUsers,
   getAllVehicle,
-  // getLicenceDetail,
   rejectLicence,
   rejectVehicle,
+  unblockUser,
 } from "../controller/adminController.js";
 import authorizeRoles from "../middleware/authorizeRoles.js";
 
 const router = express.Router();
 /* ================ Licence Verification Routes ==================== */
 router.get("/licences", authMiddleware, authorizeRoles("Admin"), getAllLicence);
-// router.get("/licence/:id", authMiddleware, getLicenceDetail);
 router.put(
   "/licence/:id/approve",
   authMiddleware,
@@ -43,4 +44,18 @@ router.put(
   rejectVehicle,
 );
 
+/*===================== User Management Routes =======================*/
+router.get("/users", authMiddleware, authorizeRoles("Admin"), getAllUsers);
+router.patch(
+  "/users/:userId/block",
+  authMiddleware,
+  authorizeRoles("Admin"),
+  blockUser,
+);
+router.patch(
+  "/users/:userId/unblock",
+  authMiddleware,
+  authorizeRoles("Admin"),
+  unblockUser,
+);
 export default router;

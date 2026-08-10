@@ -23,9 +23,7 @@ function PublishRideDateTime() {
     if (!departureAt) {
       return null;
     }
-
     const date = new Date(departureAt);
-
     return isNaN(date.getTime()) ? null : date;
   });
 
@@ -33,9 +31,7 @@ function PublishRideDateTime() {
     if (!departureAt) {
       return "";
     }
-
     const date = new Date(departureAt);
-
     if (isNaN(date.getTime())) {
       return "";
     }
@@ -61,11 +57,8 @@ function PublishRideDateTime() {
     if (!selectedDate || !selectedTime) {
       return null;
     }
-
     const [hours, minutes] = selectedTime.split(":").map(Number);
-
     const departureDateTime = new Date(selectedDate);
-
     departureDateTime.setHours(hours, minutes, 0, 0);
 
     return departureDateTime;
@@ -73,17 +66,14 @@ function PublishRideDateTime() {
 
   const isDepartureInFuture = () => {
     const departureDateTime = getDepartureDateTime();
-
     if (!departureDateTime) {
       return false;
     }
-
     return departureDateTime > new Date();
   };
 
   const handleContinue = () => {
     const departureDateTime = getDepartureDateTime();
-
     if (!departureDateTime || departureDateTime <= new Date()) {
       return;
     }

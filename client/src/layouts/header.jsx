@@ -1,13 +1,26 @@
-import { logout } from "@/redux/slices/authSlice";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
+import {
+  User,
+  Car,
+  FileText,
+  LogOut,
+  ChevronDown,
+  PlusCircle,
+  Search,
+  FerrisWheel,
+  CarTaxiFront,
+} from "lucide-react";
+import { logout } from "@/redux/slices/authSlice";
 
 function Header() {
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef(null);
+
   const navigate = useNavigate();
   const dispatch = useDispatch();
+
   const { user, isAuthenticated } = useSelector((state) => state.auth);
 
   const handleLogout = () => {
@@ -22,112 +35,195 @@ function Header() {
         setOpen(false);
       }
     };
-    if (open) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
+    document.addEventListener("mousedown", handleClickOutside);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [open]);
+  }, []);
+
+  const firstName = user?.firstName || "User";
+  const lastName = user?.lastName || "";
+  const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
 
   return (
-    <>
-      <nav className="fixed top-0 left-0 w-full bg-white shadow-md z-50">
-        <div className="max-w-7xl mx-auto flex items-center justify-between px-6 py-4">
-          <Link to="/" className="flex items-center gap-2">
-            <img
-              src="https://flowbite.com/docs/images/logo.svg"
-              alt="Logo"
-              className="w-8 h-8"
-            />
-            <span className="text-2xl font-bold text-blue-600">BlaBlaCar</span>
+    <nav className="sticky top-0 z-50 w-full border-b border-gray-200 bg-white">
+      <div className="mx-auto flex h-18 max-w-7xl items-center justify-between px-5 lg:px-8">
+        <Link to="/" className="flex items-center gap-2">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-lg font-bold text-white">
+            B
+          </div>
+
+          <span className="text-xl font-bold tracking-tight text-gray-900">
+            BlaBlaCar
+          </span>
+        </Link>
+
+        <div className="hidden items-center gap-2 md:flex">
+          <Link
+            to="/search"
+            title="Search Rides"
+            className="flex h-10 w-10 items-center justify-center rounded-full text-gray-700 transition hover:bg-gray-100 hover:text-blue-600"
+          >
+            <Search size={20} />
           </Link>
+          <Link
+            to="/publish-ride"
+            className="flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-100 hover:text-blue-600"
+          >
+            <PlusCircle size={18} />
+            Publish Ride
+          </Link>
+        </div>
 
-          <div className="relative" ref={dropdownRef}>
-            <button
-              onClick={() => setOpen(!open)}
-              className="focus:outline-none"
-            >
-              <img
-                src="https://placehold.co/100x100/E5E7EB/6B7280?text=U"
-                alt="Profile"
-                className="w-10 h-10 rounded-full border-2 border-blue-500 object-cover cursor-pointer"
-              />
-            </button>
+        <div className="relative" ref={dropdownRef}>
+          <button
+            type="button"
+            onClick={() => setOpen((prev) => !prev)}
+            className="flex items-center gap-2 rounded-full border border-gray-200 bg-white px-2 py-1.5 transition hover:border-gray-300 hover:bg-gray-50 focus:outline-none"
+          >
+            {isAuthenticated ? (
+              <>
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold text-white">
+                  {initials}
+                </div>
 
-            {open && (
-              <div className="absolute right-0 mt-3 w-48 bg-white rounded-lg shadow-lg border">
-                {isAuthenticated ? (
-                  <>
-                    <div className="border-b px-4 py-3">
-                      <p className="font-semibold text-gray-900">
-                        {user?.firstName} {user?.lastName}
-                      </p>
-
-                      <p className="truncate text-sm text-gray-500">
-                        {user?.email}
-                      </p>
-                    </div>
-                    <Link
-                      to="/profile"
-                      className="block px-4 py-3 hover:bg-gray-100"
-                      onClick={() => setOpen(false)}
-                    >
-                      My Profile
-                    </Link>
-                    <Link
-                      to="/add-licence"
-                      className="block px-4 py-3 hover:bg-gray-100"
-                      onClick={() => setOpen(false)}
-                    >
-                      Add Licence
-                    </Link>
-                    <Link
-                      to="/add-vehicle"
-                      className="block px-4 py-3 hover:bg-gray-100"
-                      onClick={() => setOpen(false)}
-                    >
-                      Add Vehicle
-                    </Link>
-                    <Link
-                      to="/my-vehicle"
-                      className="block px-4 py-3 hover:bg-gray-100"
-                      onClick={() => setOpen(false)}
-                    >
-                      My Vehicles
-                    </Link>
-                    <button
-                      onClick={handleLogout}
-                      className="w-full text-left px-4 py-3 hover:bg-gray-100 text-red-600"
-                    >
-                      Logout
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <Link
-                      to="/login"
-                      className="block px-4 py-3 hover:bg-gray-100"
-                      onClick={() => setOpen(false)}
-                    >
-                      Login
-                    </Link>
-
-                    <Link
-                      to="/register"
-                      className="block px-4 py-3 hover:bg-gray-100"
-                      onClick={() => setOpen(false)}
-                    >
-                      Register
-                    </Link>
-                  </>
-                )}
+                <span className="hidden max-w-24 truncate text-sm font-medium text-gray-800 sm:block">
+                  {firstName}
+                </span>
+              </>
+            ) : (
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-gray-600">
+                <User size={19} />
               </div>
             )}
-          </div>
+
+            <ChevronDown
+              size={17}
+              className={`text-gray-500 transition-transform ${
+                open ? "rotate-180" : ""
+              }`}
+            />
+          </button>
+
+          {open && (
+            <div className="absolute right-0 mt-3 w-64 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl">
+              {isAuthenticated ? (
+                <>
+                  <div className="border-b border-gray-100 bg-gray-50 px-4 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-600 font-semibold text-white">
+                        {initials}
+                      </div>
+
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold text-gray-900">
+                          {firstName} {lastName}
+                        </p>
+
+                        <p className="truncate text-xs text-gray-500">
+                          {user?.email}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Link
+                    to="/profile"
+                    onClick={() => setOpen(false)}
+                    className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 transition hover:bg-gray-50"
+                  >
+                    <User size={18} />
+                    My Profile
+                  </Link>
+                  <Link
+                    to="/my-rides"
+                    onClick={() => setOpen(false)}
+                    className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 transition hover:bg-gray-50"
+                  >
+                    <CarTaxiFront size={18} />
+                    My Rides
+                  </Link>
+                  <Link
+                    to="/add-licence"
+                    onClick={() => setOpen(false)}
+                    className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 transition hover:bg-gray-50"
+                  >
+                    <FileText size={18} />
+                    Add Licence
+                  </Link>
+
+                  {/* <Link
+                    to="/add-vehicle"
+                    onClick={() => setOpen(false)}
+                    className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 transition hover:bg-gray-50"
+                  >
+                    <Car size={18} />
+                    Add Vehicle
+                  </Link> */}
+
+                  <Link
+                    to="/my-vehicle"
+                    onClick={() => setOpen(false)}
+                    className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 transition hover:bg-gray-50"
+                  >
+                    <Car size={18} />
+                    My Vehicles
+                  </Link>
+
+                  <div className="border-t border-gray-100">
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium text-red-600 transition hover:bg-red-50"
+                    >
+                      <LogOut size={18} />
+                      Logout
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <Link
+                    to="/login"
+                    onClick={() => setOpen(false)}
+                    className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50"
+                  >
+                    <User size={18} />
+                    Login
+                  </Link>
+
+                  <Link
+                    to="/register"
+                    onClick={() => setOpen(false)}
+                    className="block border-t border-gray-100 px-4 py-3 text-sm font-medium text-blue-600 hover:bg-blue-50"
+                  >
+                    Register
+                  </Link>
+                </>
+              )}
+            </div>
+          )}
         </div>
-      </nav>
-    </>
+      </div>
+
+      <div className="flex border-t border-gray-100 px-5 py-2 md:hidden">
+        <div className="flex w-full items-center justify-center gap-2">
+          <Link
+            to="/publish-ride"
+            className="flex-1 rounded-lg px-3 py-2 text-center text-sm font-medium text-gray-700 hover:bg-gray-100"
+          >
+            Publish Ride
+          </Link>
+
+          <Link
+            to="/my-rides"
+            className="flex-1 rounded-lg px-3 py-2 text-center text-sm font-medium text-gray-700 hover:bg-gray-100"
+          >
+            My Rides
+          </Link>
+        </div>
+      </div>
+    </nav>
   );
 }
 

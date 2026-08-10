@@ -1,8 +1,10 @@
-import { LayoutDashboard, BadgeCheck, Car, LogOut } from "lucide-react";
-import { NavLink } from "react-router-dom";
+import { LayoutDashboard, BadgeCheck, Car, LogOut, User } from "lucide-react";
+import { NavLink, useNavigate } from "react-router-dom";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { useDispatch } from "react-redux";
+import { logout } from "@/redux/slices/authSlice";
 
 const menuItems = [
   {
@@ -20,9 +22,21 @@ const menuItems = [
     path: "/admin/vehicle-verification",
     icon: Car,
   },
+  {
+    title: "User Management",
+    path: "/admin/user-management",
+    icon: User,
+  },
 ];
 
 const Sidebar = () => {
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+
+  const handleLogout = () => {
+    dispatch(logout());
+    navigate("/login");
+  };
   return (
     <aside className="flex h-screen w-72 flex-col border-r border-border bg-background text-foreground">
       <div className="flex h-20 shrink-0 items-center gap-3 border-b border-border px-6">
@@ -59,6 +73,7 @@ const Sidebar = () => {
       <div className="shrink-0 border-t border-border p-4">
         <Button
           variant="outline"
+          onClick={handleLogout}
           className="w-full justify-center gap-2 rounded-xl border-red-200 bg-red-50 text-red-700 hover:bg-red-100"
         >
           <LogOut className="h-4 w-4" />

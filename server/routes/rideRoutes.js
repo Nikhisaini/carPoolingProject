@@ -1,7 +1,9 @@
 import express from "express";
 import authMiddleware from "../middleware/authMiddleware.js";
 import {
-  getAllRides,
+  // getAllRides,
+  getMyRides,
+  getPublishRideEligibility,
   getRideById,
   publishRide,
   searchRides,
@@ -10,7 +12,10 @@ import {
 const router = express.Router();
 
 router.post("/publish", authMiddleware, publishRide);
-router.get("/", getAllRides);
+router.get("/publish-eligibility", authMiddleware, getPublishRideEligibility);
+// router.get("/", getAllRides);
+router.get("/my-rides", authMiddleware, getMyRides);
 router.get("/search", searchRides);
 router.get("/getride/:rideId", getRideById);
+
 export default router;

@@ -11,41 +11,45 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import api from "@/services/Api";
 
 function PublishRide() {
   const navigate = useNavigate();
   const location = useLocation();
-
-  // =====================================================
-  // STATE
-  // =====================================================
-
+  const [loading, setLoading] = useState(true);
+  const [eligibility, setEligibility] = useState(null);
   const [departureLocation, setDepartureLocation] = useState(null);
   const [destinationLocation, setDestinationLocation] = useState(null);
 
-  // =====================================================
-  // RESTORE PREVIOUS STATE
-  // =====================================================
-  // When user comes back from Page 2, React component can
-  // be mounted again. Restore the locations passed through
-  // React Router state.
-  // =====================================================
+  useEffect(() => {
+    const checkEligibility = async () => {
+      try {
+        setLoading(true);
+        const res = await api.get("/ride/publish-eligibility");
+        setEligibility(res.data);
+      } catch (error) {
+        console.log("Eligibility check error:", error);
+        setEligibility({
+          eligible: false,
+          status: "ERROR",
+          message: "Failed to check publish ride eligibility",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    checkEligibility();
+  }, []);
 
   useEffect(() => {
     const previousState = location.state;
-
     if (previousState?.departureLocation) {
       setDepartureLocation(previousState.departureLocation);
     }
-
     if (previousState?.destinationLocation) {
       setDestinationLocation(previousState.destinationLocation);
     }
   }, [location.state]);
-
-  // =====================================================
-  // LOCATION SELECT
-  // =====================================================
 
   const handleDepartureSelect = (locationData) => {
     setDepartureLocation(locationData);
@@ -55,11 +59,10 @@ function PublishRide() {
     setDestinationLocation(locationData);
   };
 
-  // =====================================================
-  // CONTINUE
-  // =====================================================
-
   const handleContinue = () => {
+    if (!eligibility?.eligible) {
+      return;
+    }
     if (!departureLocation || !destinationLocation) {
       return;
     }
@@ -73,22 +76,42 @@ function PublishRide() {
     });
   };
 
-  // =====================================================
-  // VALIDATION
-  // =====================================================
+  const isValid =
+    eligibility?.eligible &&
+    departureLocation !== null &&
+    destinationLocation !== null;
 
-  const isValid = departureLocation !== null && destinationLocation !== null;
+  if (loading) {
+    return <div>Checking eligibility...</div>;
+  }
 
-  // =====================================================
-  // UI
-  // =====================================================
-
+  if (!eligibility?.eligible) {
+    return (
+      <div className="flex min-h-[70vh] items-center justify-center px-4">
+        <Card className="w-full max-w-xl rounded-2xl border-gray-200 shadow-lg">
+          <CardHeader className="px-8 pt-8 text-center">
+            <CardTitle className="text-2xl font-bold">
+              Cannot Publish ride
+            </CardTitle>
+            <CardDescription className="mt-2 text-base">
+              {eligibility.message}
+            </CardDescription>
+            <CardContent className="py-5">
+              <Button
+                onClick={() => navigate("/add-vehicle")}
+                className="h-12 w-full rounded-xl bg-slate-900 text-base font-semibold hover:bg-slate-800"
+              >
+                Add your vehicle
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </CardContent>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
-      {/* =====================================================
-          HEADER
-      ===================================================== */}
-
       <div className="mb-8">
         <p className="text-sm font-medium text-blue-600">Publish a ride</p>
 
@@ -101,10 +124,6 @@ function PublishRide() {
         </p>
       </div>
 
-      {/* =====================================================
-          ROUTE CARD
-      ===================================================== */}
-
       <Card className="overflow-visible border-gray-200 shadow-sm">
         <CardHeader className="border-b border-gray-100">
           <CardTitle className="text-xl">Your route</CardTitle>
@@ -115,10 +134,6 @@ function PublishRide() {
         </CardHeader>
 
         <CardContent className="overflow-visible p-6">
-          {/* =================================================
-              LOCATION INPUTS
-          ================================================= */}
-
           <div className="space-y-5">
             <div className="relative">
               <LocationAutocomplete
@@ -138,10 +153,6 @@ function PublishRide() {
               />
             </div>
           </div>
-
-          {/* =================================================
-              ROUTE PREVIEW
-          ================================================= */}
 
           {departureLocation && destinationLocation && (
             <div className="mt-6 rounded-xl border border-blue-100 bg-blue-50 p-4">
@@ -191,10 +202,6 @@ function PublishRide() {
               </div>
             </div>
           )}
-
-          {/* =================================================
-              NAVIGATION
-          ================================================= */}
 
           <div className="mt-8 flex justify-end border-t border-gray-100 pt-6">
             <Button

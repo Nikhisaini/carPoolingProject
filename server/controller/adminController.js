@@ -1,5 +1,7 @@
+import mongoose from "mongoose";
 import Licence from "../model/licence.js";
 import LicenceCategoryMapping from "../model/LicenceCategoryMapping.js";
+import User from "../model/user.js";
 import Vehicle from "../model/vehicle.js";
 
 const getAllLicence = async (req, res) => {
@@ -43,34 +45,6 @@ const getAllLicence = async (req, res) => {
     });
   }
 };
-
-// const getLicenceDetail = async (req, res) => {
-//   try {
-//     const { id } = req.params;
-
-//     const licence = await Licence.findById(id).populate(
-//       "userId",
-//       "firstname lastname email phoneNumber profileImage",
-//     );
-
-//     if (!licence) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "Driving Licence not found",
-//       });
-//     }
-//     return res.status(200).json({
-//       success: true,
-//       licence,
-//     });
-//   } catch (error) {
-//     console.log("Get Licence Detail Error", error);
-//     return res.status(500).json({
-//       success: false,
-//       message: "Internal Server Error",
-//     });
-//   }
-// };
 
 const approveLicence = async (req, res) => {
   try {
@@ -284,6 +258,106 @@ const rejectVehicle = async (req, res) => {
     });
   }
 };
+
+const getAllUsers = async (req, res) => {
+  try {
+    const users = await User.find().select("-password").sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      success: true,
+      message: "Users fetched successfully",
+      users,
+    });
+  } catch (error) {
+    console.log("Get All Users Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error.",
+    });
+  }
+};
+
+const blockUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid User ID",
+      });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+    if (user.role === "Admin") {
+      return res.status(403).json({
+        success: false,
+        message: "Admin users cannot be blocked",
+      });
+    }
+    if (user.isBlocked) {
+      return res.status(400).json({
+        success: false,
+        message: "User already blocekd",
+      });
+    }
+    user.isBlocked = true;
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "User Successfully Blocked",
+      userId: user._id,
+      isBlocked: user.isBlocked,
+    });
+  } catch (error) {
+    console.log("Error While Block User".error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
+  }
+};
+
+const unblockUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid User ID",
+      });
+    }
+
+    const user = await User.findById(userId);
+    if (!user.isBlocked) {
+      return res.status(400).json({
+        success: false,
+        message: "User already unblocked",
+      });
+    }
+    user.isBlocked = false;
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "User Successfully Blocked",
+      userId: user._id,
+      isBlocked: user.isBlocked,
+    });
+  } catch (error) {
+    console.log("Error While Unblock User".error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
+  }
+};
 export {
   getAllLicence,
   approveLicence,
@@ -291,4 +365,7 @@ export {
   getAllVehicle,
   approveVehicle,
   rejectVehicle,
+  getAllUsers,
+  blockUser,
+  unblockUser,
 };

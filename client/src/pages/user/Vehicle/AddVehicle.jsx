@@ -99,9 +99,7 @@ function AddVehicle() {
     const checkLicenceAndFetchData = async () => {
       try {
         setCheckingLicence(true);
-
         const licenceRes = await api.get("/licence/check-approved");
-
         if (!licenceRes.data.success) {
           setLicenceApproved(false);
           return;
@@ -113,7 +111,8 @@ function AddVehicle() {
           api.get("/vehicle-type/list"),
           api.get("/fuel-type/list"),
         ]);
-
+        console.log("Vehicle Types:", vehicleRes.data.data);
+        console.log("Fuel Types:", fuelRes.data.data);
         setVehicleTypes(vehicleRes.data.data);
         setFuelTypes(fuelRes.data.data);
       } catch (error) {
@@ -298,9 +297,6 @@ function AddVehicle() {
     }
   };
 
-  // =====================================================
-  // LOADING / PENDING STATES
-  // =====================================================
   if (checkingLicence) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-muted/30">
@@ -334,10 +330,6 @@ function AddVehicle() {
       </div>
     );
   }
-
-  // =====================================================
-  // MAIN FORM
-  // =====================================================
   const imageUploadFields = [
     {
       key: "rcFrontImage",
@@ -412,13 +404,14 @@ function AddVehicle() {
                     </Label>
                     <Select
                       value={formData.vehicleType}
-                      onValueChange={(v) =>
-                        handleSelectChange("vehicleType", v)
+                      onValueChange={(value) =>
+                        handleSelectChange("vehicleType", value)
                       }
                     >
                       <SelectTrigger id="vehicleType" className="w-full">
                         <SelectValue placeholder="Select vehicle type" />
                       </SelectTrigger>
+
                       <SelectContent>
                         {vehicleTypes.map((type) => (
                           <SelectItem key={type._id} value={type._id}>

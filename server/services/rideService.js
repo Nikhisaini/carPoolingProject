@@ -1,5 +1,5 @@
 import Ride from "../model/ride.js";
-import RideLocation from "../model/RideLocation.js";
+import RideLocation from "../model/rideLocation.js";
 import RidePreference from "../model/ridePreference.js";
 
 const escapeRegex = (value) => {
