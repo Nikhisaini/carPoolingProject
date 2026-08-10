@@ -37,7 +37,7 @@ function AppRoutes() {
         <Route path="/unauthorized" element={<Unauthorized />} />
         <Route path="/search" element={<SearchRides />} />
         <Route path="search/ride/results" element={<RideResults />} />
-        <Route element={<ProtectedRoute />}>
+        <Route element={<ProtectedRoute allowedRoles={["User"]} />}>
           <Route path="/profile" element={<Profile />} />
           <Route path="/complete-profile" element={<CompleteProfile />} />
           <Route path="/edit-profile" element={<EditProfile />} />

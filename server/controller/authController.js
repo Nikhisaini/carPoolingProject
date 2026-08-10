@@ -215,35 +215,66 @@ const resendOtp = async (req, res) => {
 
 const login = async (req, res) => {
   try {
-    const { phoneNumber, password } = req.body;
+    const { email, password } = req.body;
 
-    if (!phoneNumber || !password) {
+    if (!email || !email.trim()) {
       return res.status(400).json({
         success: false,
-        message: "Phone number and password are required",
+        field: "email",
+        message: "Email is required",
       });
     }
-    const user = await User.findOne({ phoneNumber });
+
+    if (!password) {
+      return res.status(400).json({
+        success: false,
+        field: "password",
+        message: "Password is required",
+      });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailRegex.test(normalizedEmail)) {
+      return res.status(400).json({
+        success: false,
+        field: "email",
+        message: "Please enter a valid email address",
+      });
+    }
+
+    const user = await User.findOne({
+      email: normalizedEmail,
+    });
 
     if (!user) {
-      return res.status(400).json({
+      return res.status(401).json({
         success: false,
-        message: " Invaliud phone number or password",
+        field: "email",
+        message: "Invalid email ",
       });
     }
+
     if (user.isBlocked) {
       return res.status(403).json({
         success: false,
-        message: "You account is Blocked",
+        field: "email",
+        message: "Your account is blocked",
       });
     }
+
     const isPasswordMatched = await bcrypt.compare(password, user.password);
+
     if (!isPasswordMatched) {
       return res.status(401).json({
         success: false,
-        message: "Invalid Phone number or password",
+        field: "password",
+        message: "Incorrect password",
       });
     }
+
     const token = jwt.sign(
       {
         id: user._id,
@@ -254,6 +285,7 @@ const login = async (req, res) => {
         expiresIn: "7d",
       },
     );
+
     return res.status(200).json({
       success: true,
       message: "Login successful",
@@ -269,7 +301,8 @@ const login = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error(error);
+    console.error("Login Error:", error);
+
     return res.status(500).json({
       success: false,
       message: "Internal server error",
