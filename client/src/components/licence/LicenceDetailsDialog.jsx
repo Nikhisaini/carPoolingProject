@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ShieldCheck,
   User,
@@ -29,7 +29,22 @@ const LicenceDetailsDialog = ({
   onStatusUpdate,
   onStatusChange,
 }) => {
-  const [loading, setLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState(null);
+  const [cashfreeVerified, setCashfreeVerified] = useState(false);
+  const [verificationStatus, setVerificationStatus] = useState(
+    licence?.verificationResult || null,
+  );
+
+  const [verificationReason, setVerificationReason] = useState(
+    licence?.verificationFailureReason || null,
+  );
+
+  useEffect(() => {
+    setVerificationStatus(licence?.verificationResult || null);
+    setVerificationReason(licence?.verificationFailureReason || null);
+    setCashfreeVerified(licence?.verificationResult === "VALID");
+  }, [licence]);
+
   if (!licence) {
     return null;
   }
@@ -57,11 +72,65 @@ const LicenceDetailsDialog = ({
         return "border-amber-200 bg-amber-50 text-amber-700";
     }
   };
+  const handleVerify = async () => {
+    if (!licence?._id || actionLoading) return;
+
+    try {
+      setActionLoading("verify");
+      const res = await api.put(`/admin/licence/${licence._id}/verify`);
+      const verification = res.data.verification;
+      const status = verification?.status;
+      setVerificationStatus(status || "INVALID");
+
+      if (status === "VALID") {
+        setCashfreeVerified(true);
+        setVerificationReason(null);
+
+        if (onStatusUpdate) {
+          onStatusUpdate({
+            ...licence,
+            verificationStatus: "Pending",
+            verificationProvider: "Cashfree",
+            verificationReferenceId: verification.referenceId || null,
+            verificationFailureReason: null,
+          });
+        }
+      } else {
+        setCashfreeVerified(false);
+        setVerificationReason(
+          verification?.reason ||
+            res.data.message ||
+            "Driving Licence verification failed.",
+        );
+        if (onStatusUpdate) {
+          onStatusUpdate({
+            ...licence,
+            verificationStatus: "Pending",
+            verificationProvider: "Cashfree",
+            verificationReferenceId: verification?.referenceId || null,
+            verificationFailureReason: verification?.reason || res.data.message,
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Verify Licence Error:", error.response?.data || error);
+      const verification = error.response?.data?.verification;
+      setVerificationStatus(verification?.status || "ERROR");
+      setCashfreeVerified(false);
+      setVerificationReason(
+        verification?.reason ||
+          error.response?.data?.message ||
+          "Failed to verify driving licence.",
+      );
+    } finally {
+      setActionLoading(null);
+    }
+  };
 
   const handleApprove = async () => {
-    if (!licence?._id || loading) return;
+    if (!licence?._id || actionLoading) return;
     try {
-      setLoading(true);
+      setActionLoading("approve");
       const res = await api.put(`/admin/licence/${licence._id}/approve`);
       if (res.data.success) {
         if (onStatusUpdate) {
@@ -81,14 +150,14 @@ const LicenceDetailsDialog = ({
         error.response?.data?.message || "Failed to approve driving licence.",
       );
     } finally {
-      setLoading(false);
+      setActionLoading(null);
     }
   };
 
   const handleReject = async () => {
-    if (!licence?._id || loading) return;
+    if (!licence?._id || actionLoading) return;
     try {
-      setLoading(true);
+      setActionLoading("reject");
       const res = await api.put(`/admin/licence/${licence._id}/reject`);
       if (res.data.success) {
         if (onStatusUpdate) {
@@ -108,11 +177,15 @@ const LicenceDetailsDialog = ({
         error.response?.data?.message || "Failed to reject driving licence.",
       );
     } finally {
-      setLoading(false);
+      setActionLoading(null);
     }
   };
   const currentStatus = licence.verificationStatus || "Pending";
   const isPending = currentStatus === "Pending";
+
+  const existingVerificationResult = licence.verificationResult;
+  const isAlreadyVerified = existingVerificationResult === "VALID";
+  const isAlreadyInvalid = existingVerificationResult === "INVALID";
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="flex max-h-[92vh] w-[calc(100%-2rem)] max-w-6xl flex-col overflow-hidden rounded-2xl border border-border bg-background p-0 text-foreground shadow-2xl">
@@ -377,33 +450,64 @@ const LicenceDetailsDialog = ({
                   </p>
                 </div>
                 <div className="flex gap-3">
+                  {verificationStatus && (
+                    <div className="flex max-w-md flex-col items-end pt-1.5 text-right">
+                      <span
+                        className={`text-sm font-semibold ${
+                          verificationStatus === "VALID"
+                            ? "text-emerald-600"
+                            : "text-red-600"
+                        }`}
+                      >
+                        {verificationStatus === "VALID"
+                          ? "✓ Valid"
+                          : "✕ Invalid"}
+                      </span>
+                    </div>
+                  )}
                   <Button
                     type="button"
                     variant="outline"
                     onClick={handleReject}
-                    disabled={loading || !isPending}
+                    disabled={actionLoading !== null || !isPending}
                     className="min-w-[120px] border-red-200 bg-red-50 text-red-700 hover:bg-red-100"
                   >
-                    {loading ? (
+                    {actionLoading === "reject" ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <XCircle className="h-4 w-4" />
                     )}
-                    {loading ? "Processing..." : "Reject"}
+                    {actionLoading === "reject" ? "Rejecting..." : "Reject"}
                   </Button>
-                  <Button
-                    type="button"
-                    onClick={handleApprove}
-                    disabled={loading || !isPending}
-                    className="min-w-[120px] bg-emerald-600 text-white shadow-sm hover:bg-emerald-700"
-                  >
-                    {loading ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <CheckCircle2 className="h-4 w-4" />
-                    )}
-                    {loading ? "Processing..." : "Approve"}
-                  </Button>
+                  {!cashfreeVerified && !isAlreadyVerified ? (
+                    <Button
+                      type="button"
+                      onClick={handleVerify}
+                      disabled={actionLoading !== null || !isPending}
+                      className="min-w-[120px] bg-blue-600 text-white shadow-sm hover:bg-blue-700"
+                    >
+                      {actionLoading === "verify" ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <ShieldCheck className="h-4 w-4" />
+                      )}
+                      {actionLoading === "verify" ? "Verifying..." : "Verify"}
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      onClick={handleApprove}
+                      disabled={actionLoading !== null || !isPending}
+                      className="min-w-[120px] bg-emerald-600 text-white shadow-sm hover:bg-emerald-700"
+                    >
+                      {actionLoading === "approve" ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <CheckCircle2 className="h-4 w-4" />
+                      )}
+                      {actionLoading === "approve" ? "Approving..." : "Approve"}
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>

@@ -58,11 +58,11 @@ function EditVehicle() {
   const [rcFrontImage, setRcFrontImage] = useState(null);
   const [rcBackImage, setRcBackImage] = useState(null);
   const [insuranceImage, setInsuranceImage] = useState(null);
-  const [vehicleTypes, setVehicleTypes] = useState([]);
+  const [licenceCategories, setLicenceCategories] = useState([]);
   const [fuelTypes, setFuelTypes] = useState([]);
   const [errors, setErrors] = useState({});
   const [vehicleData, setVehicleData] = useState({
-    vehicleTypeId: "",
+    licenceCategoryId: "",
     model: "",
     brand: "",
     manufactureYear: "",
@@ -77,17 +77,18 @@ function EditVehicle() {
       try {
         setFetching(true);
 
-        const [vehicleTypeRes, fuelTypeRes, vehicleRes] = await Promise.all([
-          api.get("/vehicle-type/list"),
-          api.get("/fuel-type/list"),
-          api.get(`/vehicle/${id}`),
-        ]);
+        const [licenceCategoryRes, fuelTypeRes, vehicleRes] = await Promise.all(
+          [
+            api.get("/licence-category"),
+            api.get("/fuel-type/list"),
+            api.get(`/vehicle/${id}`),
+          ],
+        );
 
-        setVehicleTypes(vehicleTypeRes.data.data);
+        setLicenceCategories(licenceCategoryRes.data.data);
         setFuelTypes(fuelTypeRes.data.data);
-
         setVehicleData({
-          vehicleTypeId: vehicleRes.data.vehicle.vehicleTypeId?._id,
+          licenceCategoryId: vehicleRes.data.vehicle.licenceCategoryId?._id,
           model: vehicleRes.data.vehicle.model,
           brand: vehicleRes.data.vehicle.brand,
           manufactureYear: vehicleRes.data.vehicle.manufactureYear,
@@ -157,8 +158,8 @@ function EditVehicle() {
   const validateForm = () => {
     const newErrors = {};
 
-    if (!vehicleData.vehicleTypeId) {
-      newErrors.vehicleTypeId = "Select a vehicle type";
+    if (!vehicleData.licenceCategoryId) {
+      newErrors.licenceCategoryId = "Select a licence category";
     }
     if (!vehicleData.brand?.trim()) {
       newErrors.brand = "Brand is required";
@@ -217,7 +218,7 @@ function EditVehicle() {
     try {
       setLoading(true);
       const formData = new FormData();
-      formData.append("vehicleTypeId", vehicleData.vehicleTypeId);
+      formData.append("licenceCategoryId", vehicleData.licenceCategoryId);
       formData.append("model", vehicleData.model);
       formData.append("brand", vehicleData.brand);
       formData.append("manufactureYear", vehicleData.manufactureYear);
@@ -321,34 +322,52 @@ function EditVehicle() {
 
                     <div className="grid gap-4 sm:grid-cols-2">
                       <div>
-                        <Label htmlFor="vehicleTypeId" className="mb-1.5 block">
-                          Vehicle type
+                        <Label
+                          htmlFor="licenceCategoryId"
+                          className="mb-1.5 block"
+                        >
+                          Licence category
                         </Label>
+
                         <Select
-                          value={vehicleData.vehicleTypeId}
+                          value={vehicleData.licenceCategoryId}
                           onValueChange={(v) =>
-                            handleSelectChange("vehicleTypeId", v)
+                            handleSelectChange("licenceCategoryId", v)
                           }
                         >
-                          <SelectTrigger id="vehicleTypeId" className="w-full">
-                            <SelectValue placeholder="Select vehicle type">
-                              {(value) =>
-                                vehicleTypes.find((t) => t._id === value)
-                                  ?.name || "Select vehicle type"
-                              }
+                          <SelectTrigger
+                            id="licenceCategoryId"
+                            className="w-full"
+                          >
+                            <SelectValue placeholder="Select licence category">
+                              {(value) => {
+                                const category = licenceCategories.find(
+                                  (item) => item._id === value,
+                                );
+
+                                return category
+                                  ? // ? `${category.type} - ${category.name}`
+                                    ` ${category.name}`
+                                  : "Select licence category";
+                              }}
                             </SelectValue>
                           </SelectTrigger>
+
                           <SelectContent>
-                            {vehicleTypes.map((type) => (
-                              <SelectItem key={type._id} value={type._id}>
-                                {type.name}
+                            {licenceCategories.map((category) => (
+                              <SelectItem
+                                key={category._id}
+                                value={category._id}
+                              >
+                                {/* {category.type} -*/} {category.name}
                               </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
-                        {errors.vehicleTypeId && (
+
+                        {errors.licenceCategoryId && (
                           <p className="mt-1 text-xs text-red-600">
-                            {errors.vehicleTypeId}
+                            {errors.licenceCategoryId}
                           </p>
                         )}
                       </div>
@@ -508,7 +527,6 @@ function EditVehicle() {
 
                   <div className="my-6 h-px bg-border" />
 
-                  {/* VEHICLE IMAGES */}
                   <section>
                     <div className="mb-3 flex items-center gap-1.5">
                       <ImageIcon className="h-3.5 w-3.5 text-muted-foreground" />
@@ -567,7 +585,6 @@ function EditVehicle() {
 
                   <div className="my-6 h-px bg-border" />
 
-                  {/* DOCUMENTS */}
                   <section>
                     <div className="mb-3 flex items-center gap-1.5">
                       <Tag className="h-3.5 w-3.5 text-muted-foreground" />
@@ -635,7 +652,6 @@ function EditVehicle() {
               )}
             </div>
 
-            {/* FOOTER */}
             <div className="flex gap-3 border-t border-border bg-muted/20 px-7 py-5">
               <Button
                 type="button"

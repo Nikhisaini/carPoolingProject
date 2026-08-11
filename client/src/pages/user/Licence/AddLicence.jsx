@@ -10,7 +10,6 @@ import {
   Hash,
   Tag,
 } from "lucide-react";
-
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -23,12 +22,15 @@ function AddLicence() {
   const [successMessage, setSuccessMessage] = useState("");
   const frontInputRef = useRef(null);
   const backInputRef = useRef(null);
+
   const [formData, setFormData] = useState({
     licenceNumber: "",
+    dob: "",
     categories: [],
   });
+
   const [frontImage, setFrontImage] = useState(null);
-  const [backImage, setbackImage] = useState(null);
+  const [backImage, setBackImage] = useState(null);
 
   useEffect(() => {
     getLicenceCategories();
@@ -37,10 +39,11 @@ function AddLicence() {
   const getLicenceCategories = async () => {
     try {
       const res = await api.get("/licence-category");
-      console.log(res.data);
-      setLicenceCategories(res.data.data);
+      setLicenceCategories(res.data.data || []);
     } catch (error) {
-      console.log(error);
+      setErrorMessage(
+        error.response?.data?.message || "Failed to load licence categories.",
+      );
     }
   };
 
@@ -52,23 +55,24 @@ function AddLicence() {
       [name]: value,
     }));
     setErrorMessage("");
+    setSuccessMessage("");
   };
 
   const toggleCategory = (id) => {
     setFormData((prev) => ({
       ...prev,
       categories: prev.categories.includes(id)
-        ? prev.categories.filter((catId) => catId !== id)
+        ? prev.categories.filter((categoryId) => categoryId !== id)
         : [...prev.categories, id],
     }));
     setErrorMessage("");
+    setSuccessMessage("");
   };
 
   const validateImage = (file) => {
     if (!file) {
       return "Please select an image.";
     }
-
     const allowedTypes = [
       "image/jpeg",
       "image/jpg",
@@ -76,11 +80,11 @@ function AddLicence() {
       "image/webp",
       "image/avif",
     ];
-
     if (!allowedTypes.includes(file.type)) {
       return "Only JPG, JPEG, PNG, WEBP and AVIF images are allowed.";
     }
     const maxSize = 5 * 1024 * 1024;
+
     if (file.size > maxSize) {
       return "Image size must not exceed 5 MB.";
     }
@@ -91,7 +95,7 @@ function AddLicence() {
   };
 
   const handleFrontImageChange = (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     const error = validateImage(file);
     if (error) {
       setErrorMessage(error);
@@ -100,83 +104,144 @@ function AddLicence() {
       return;
     }
     setErrorMessage("");
+    setSuccessMessage("");
     setFrontImage(file);
   };
 
   const handleBackImageChange = (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     const error = validateImage(file);
+
     if (error) {
       setErrorMessage(error);
       e.target.value = "";
-      setbackImage(null);
+      setBackImage(null);
       return;
     }
     setErrorMessage("");
-    setbackImage(file);
+    setSuccessMessage("");
+    setBackImage(file);
+  };
+
+  const handleLicenceNumberChange = (e) => {
+    const value = e.target.value
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, "")
+      .slice(0, 15);
+
+    setFormData((prev) => ({
+      ...prev,
+      licenceNumber: value,
+    }));
+
+    setErrorMessage("");
+    setSuccessMessage("");
+  };
+
+  const handleDobChange = (e) => {
+    setFormData((prev) => ({
+      ...prev,
+      dob: e.target.value,
+    }));
+
+    setErrorMessage("");
+    setSuccessMessage("");
   };
 
   const clearFrontImage = () => {
     setFrontImage(null);
-    if (frontInputRef.current) frontInputRef.current.value = "";
+    if (frontInputRef.current) {
+      frontInputRef.current.value = "";
+    }
   };
 
   const clearBackImage = () => {
-    setbackImage(null);
-    if (backInputRef.current) backInputRef.current.value = "";
+    setBackImage(null);
+    if (backInputRef.current) {
+      backInputRef.current.value = "";
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     setErrorMessage("");
     setSuccessMessage("");
+
+    if (!formData.dob) {
+      setErrorMessage("Date of birth is required.");
+      return;
+    }
+
+    const selectedDob = new Date(`${formData.dob}T00:00:00`);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (selectedDob > today) {
+      setErrorMessage("Date of birth cannot be in the future.");
+      return;
+    }
+    if (!formData.licenceNumber.trim()) {
+      setErrorMessage("Licence number is required.");
+      return;
+    }
+    if (formData.categories.length === 0) {
+      setErrorMessage("Please select at least one category.");
+      return;
+    }
+    if (!frontImage) {
+      setErrorMessage("Please upload front image.");
+      return;
+    }
+    if (!backImage) {
+      setErrorMessage("Please upload back image.");
+      return;
+    }
+    const frontError = validateImage(frontImage);
+    if (frontError) {
+      setErrorMessage(frontError);
+      return;
+    }
+    const backError = validateImage(backImage);
+    if (backError) {
+      setErrorMessage(backError);
+      return;
+    }
+
     try {
       setLoading(true);
       const data = new FormData();
-      data.append("licenceNumber", formData.licenceNumber);
-      formData.categories.forEach((category) => {
-        data.append("categories", category);
+      data.append("licenceNumber", formData.licenceNumber.trim());
+      data.append("dob", formData.dob);
+      formData.categories.forEach((categoryId) => {
+        data.append("categories", categoryId);
       });
-      if (!frontImage) {
-        setErrorMessage("Please upload front image.");
-        return;
-      }
-      if (!backImage) {
-        setErrorMessage("Please upload back image.");
-        return;
-      }
-      if (formData.categories.length === 0) {
-        setErrorMessage("Please select at least one category.");
-        return;
-      }
-      const frontError = validateImage(frontImage);
-      if (frontError) {
-        setErrorMessage(frontError);
-        return;
-      }
-      const backError = validateImage(backImage);
-      if (backError) {
-        setErrorMessage(backError);
-        return;
-      }
-
       data.append("frontImage", frontImage);
       data.append("backImage", backImage);
+
       const res = await api.post("/licence/add", data, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
       });
-      setSuccessMessage(res.data.message);
-
+      setSuccessMessage(
+        res.data.message || "Driving licence submitted successfully.",
+      );
       setFormData({
         licenceNumber: "",
+        dob: "",
         categories: [],
       });
       setFrontImage(null);
-      setbackImage(null);
-      frontInputRef.current.value = "";
-      backInputRef.current.value = "";
+      setBackImage(null);
+
+      if (frontInputRef.current) {
+        frontInputRef.current.value = "";
+      }
+
+      if (backInputRef.current) {
+        backInputRef.current.value = "";
+      }
     } catch (error) {
       setErrorMessage(
         error.response?.data?.message ||
@@ -197,10 +262,12 @@ function AddLicence() {
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50">
                 <IdCard className="h-5 w-5 text-blue-600" />
               </div>
+
               <div>
                 <h1 className="text-lg font-semibold tracking-tight text-foreground">
                   Driving licence verification
                 </h1>
+
                 <p className="text-sm text-muted-foreground">
                   Upload your driving licence for quick verification.
                 </p>
@@ -223,6 +290,7 @@ function AddLicence() {
               <section>
                 <div className="mb-3 flex items-center gap-1.5">
                   <Hash className="h-3.5 w-3.5 text-muted-foreground" />
+
                   <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     Licence details
                   </h2>
@@ -231,15 +299,34 @@ function AddLicence() {
                 <Label htmlFor="licenceNumber" className="mb-1.5 block">
                   Licence number
                 </Label>
+
                 <Input
                   id="licenceNumber"
                   type="text"
                   name="licenceNumber"
                   value={formData.licenceNumber}
-                  onChange={handleChange}
-                  placeholder="e.g. DL-1420110012345"
+                  onChange={handleLicenceNumberChange}
+                  placeholder="e.g. KA0120198900984"
+                  maxLength={15}
+                  autoComplete="off"
                   required
                 />
+
+                <div>
+                  <Label htmlFor="dob" className="mb-1.5 pt-6 block">
+                    Date of birth
+                  </Label>
+
+                  <Input
+                    id="dob"
+                    type="date"
+                    name="dob"
+                    value={formData.dob}
+                    onChange={handleDobChange}
+                    max={new Date().toISOString().split("T")[0]}
+                    required
+                  />
+                </div>
               </section>
 
               <div className="my-6 h-px bg-border" />
@@ -247,6 +334,7 @@ function AddLicence() {
               <section>
                 <div className="mb-3 flex items-center gap-1.5">
                   <Tag className="h-3.5 w-3.5 text-muted-foreground" />
+
                   <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     Vehicle categories
                   </h2>
@@ -255,6 +343,7 @@ function AddLicence() {
                 <div className="flex flex-wrap gap-2">
                   {licenceCategories.map((item) => {
                     const isSelected = formData.categories.includes(item._id);
+
                     return (
                       <button
                         key={item._id}
@@ -268,11 +357,13 @@ function AddLicence() {
                         )}
                       >
                         {isSelected && <CheckCircle2 className="h-3.5 w-3.5" />}
-                        {item.name}
+
+                        {item.type}
                       </button>
                     );
                   })}
                 </div>
+
                 {formData.categories.length === 0 && (
                   <p className="mt-2 text-xs text-muted-foreground">
                     Select at least one category that applies to your licence.
@@ -285,6 +376,7 @@ function AddLicence() {
               <section>
                 <div className="mb-3 flex items-center gap-1.5">
                   <ImageIcon className="h-3.5 w-3.5 text-muted-foreground" />
+
                   <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     Document images
                   </h2>
@@ -302,7 +394,7 @@ function AddLicence() {
                     <input
                       type="file"
                       ref={frontInputRef}
-                      accept="image/*"
+                      accept="image/jpeg,image/png,image/webp,image/avif"
                       onChange={handleFrontImageChange}
                       className="hidden"
                     />
@@ -312,10 +404,12 @@ function AddLicence() {
                         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100">
                           <CheckCircle2 className="h-5 w-5 text-emerald-600" />
                         </div>
+
                         <div>
                           <p className="max-w-[180px] truncate text-sm font-medium text-emerald-700">
                             {frontImage.name}
                           </p>
+
                           <span
                             role="button"
                             onClick={(e) => {
@@ -334,12 +428,14 @@ function AddLicence() {
                         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted transition-colors group-hover:bg-blue-100">
                           <Upload className="h-5 w-5 text-muted-foreground transition-colors group-hover:text-blue-600" />
                         </div>
+
                         <div>
                           <p className="text-sm font-medium text-foreground">
                             Front image
                           </p>
+
                           <p className="mt-0.5 text-xs text-muted-foreground">
-                            JPG, PNG, WEBP · up to 5MB
+                            JPG, PNG, WEBP, AVIF · up to 5MB
                           </p>
                         </div>
                       </>
@@ -357,7 +453,7 @@ function AddLicence() {
                     <input
                       type="file"
                       ref={backInputRef}
-                      accept="image/*"
+                      accept="image/jpeg,image/png,image/webp,image/avif"
                       onChange={handleBackImageChange}
                       className="hidden"
                     />
@@ -367,10 +463,12 @@ function AddLicence() {
                         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100">
                           <CheckCircle2 className="h-5 w-5 text-emerald-600" />
                         </div>
+
                         <div>
                           <p className="max-w-[180px] truncate text-sm font-medium text-emerald-700">
                             {backImage.name}
                           </p>
+
                           <span
                             role="button"
                             onClick={(e) => {
@@ -389,12 +487,14 @@ function AddLicence() {
                         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted transition-colors group-hover:bg-blue-100">
                           <ImageIcon className="h-5 w-5 text-muted-foreground transition-colors group-hover:text-blue-600" />
                         </div>
+
                         <div>
                           <p className="text-sm font-medium text-foreground">
                             Back image
                           </p>
+
                           <p className="mt-0.5 text-xs text-muted-foreground">
-                            JPG, PNG, WEBP · up to 5MB
+                            JPG, PNG, WEBP, AVIF · up to 5MB
                           </p>
                         </div>
                       </>

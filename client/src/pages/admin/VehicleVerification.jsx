@@ -54,7 +54,7 @@ function VehicleVerification() {
 
     return vehicles.filter((vehicle) => {
       const owner = vehicle.ownerId;
-      const vehicleType = vehicle.vehicleTypeId;
+      const vehicleType = vehicle.licenceCategoryId;
       const fuelType = vehicle.fuelTypeId;
       const searchableText = [
         owner?.firstName,
@@ -84,7 +84,7 @@ function VehicleVerification() {
   const getStatusStyle = (status) => {
     switch (status) {
       case "Approved":
-        return "bg-emerald-50 text-emerald-700 border-emerald-200";
+        return "bg-green-50 text-green-700 border-green-200";
 
       case "Rejected":
         return "bg-red-50 text-red-700 border-red-200";
@@ -288,7 +288,7 @@ function VehicleVerification() {
 
                     <TableCell>
                       <Badge variant="secondary" className="font-normal">
-                        {vehicle.vehicleTypeId?.name || "—"}
+                        {vehicle.licenceCategoryId?.name || "—"}
                       </Badge>
                     </TableCell>
 

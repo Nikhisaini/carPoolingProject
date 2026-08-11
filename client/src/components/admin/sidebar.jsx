@@ -43,7 +43,7 @@ const Sidebar = () => {
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600">
           <Car className="h-5 w-5 text-white" />
         </div>
-        <h1 className="text-lg font-bold tracking-tight">BlaBla Admin</h1>
+        <h1 className="text-lg font-bold tracking-tight">YooHuCar Admin</h1>
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto p-4">

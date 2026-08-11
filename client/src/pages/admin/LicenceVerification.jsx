@@ -156,6 +156,7 @@ const LicenceVerification = () => {
               <TableHead>Licence Number</TableHead>
               <TableHead>Categories</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Verification</TableHead>
               <TableHead className="text-right">Action</TableHead>
             </TableRow>
           </TableHeader>
@@ -163,7 +164,7 @@ const LicenceVerification = () => {
           <TableBody>
             {loading && (
               <TableRow>
-                <TableCell colSpan={5} className="h-32 text-center">
+                <TableCell colSpan={6} className="h-32 text-center">
                   <div className="flex items-center justify-center gap-2 text-muted-foreground">
                     <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
                     Loading licences...
@@ -174,7 +175,7 @@ const LicenceVerification = () => {
 
             {!loading && filteredLicences.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className="h-40 text-center">
+                <TableCell colSpan={6} className="h-40 text-center">
                   <div className="flex flex-col items-center justify-center gap-2">
                     <ShieldCheck className="h-8 w-8 text-muted-foreground/50" />
 
@@ -261,7 +262,29 @@ const LicenceVerification = () => {
                         {licence.verificationStatus || "Pending"}
                       </Badge>
                     </TableCell>
-
+                    <TableCell>
+                      {licence.verificationResult === "VALID" ? (
+                        <Badge className="border-emerald-200 bg-emerald-50 text-emerald-700">
+                          <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                          Verified
+                        </Badge>
+                      ) : licence.verificationResult === "INVALID" ? (
+                        <Badge className="border-red-200 bg-red-50 text-red-700">
+                          <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-red-500" />
+                          Unverified
+                        </Badge>
+                      ) : licence.verificationResult === "ERROR" ? (
+                        <Badge className="border-red-200 bg-red-50 text-red-700">
+                          <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-red-500" />
+                          Unverified
+                        </Badge>
+                      ) : (
+                        <Badge className="border-amber-200 bg-amber-50 text-amber-700">
+                          <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-amber-500" />
+                          Not Verified
+                        </Badge>
+                      )}
+                    </TableCell>
                     <TableCell className="text-right">
                       <Button
                         variant="outline"

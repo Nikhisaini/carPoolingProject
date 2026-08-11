@@ -152,7 +152,7 @@ function PublishRideReview() {
       if (!res.data?.success) {
         throw new Error(res.data?.message || "Unable to publish ride.");
       }
-      navigate("/", {
+      navigate("/my-rides", {
         replace: true,
       });
     } catch (error) {

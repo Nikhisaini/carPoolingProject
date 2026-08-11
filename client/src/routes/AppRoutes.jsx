@@ -25,6 +25,7 @@ import SearchRides from "@/pages/searchRides/SearchRides";
 import Home from "@/pages/home/Home";
 import Unauthorized from "@/pages/unauthorized/Unauthorized";
 import RideResults from "@/pages/searchRides/RideResults";
+import MyLicence from "@/pages/user/Licence/MyLicence";
 
 function AppRoutes() {
   return (
@@ -42,8 +43,9 @@ function AppRoutes() {
           <Route path="/complete-profile" element={<CompleteProfile />} />
           <Route path="/edit-profile" element={<EditProfile />} />
           <Route path="/add-licence" element={<AddLicence />} />
+          <Route path="/my-licence" element={<MyLicence />} />
           <Route path="/add-vehicle" element={<AddVehicle />} />
-          <Route path="/my-vehicle" element={<MyVehicle />} />
+          <Route path="/my-vehicles" element={<MyVehicle />} />
           <Route path="/vehicle/:id" element={<VehicleDetail />} />
           <Route path="/edit-vehicle/:id" element={<EditVehicle />} />
           <Route path="/publish-ride" element={<PublishRide />} />

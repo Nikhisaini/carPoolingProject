@@ -124,10 +124,6 @@ function VehicleDetail() {
       )}
     </div>
   );
-
-  // =====================================================
-  // LOADING
-  // =====================================================
   if (loading) {
     return (
       <div className="min-h-screen bg-muted/30 py-8">
@@ -171,7 +167,7 @@ function VehicleDetail() {
     {
       icon: CarFront,
       label: "Vehicle type",
-      value: vehicle.vehicleTypeId?.name || "—",
+      value: vehicle.licenceCategoryId?.name || "—",
     },
     { icon: Fuel, label: "Fuel type", value: vehicle.fuelTypeId?.name || "—" },
     {
@@ -371,7 +367,6 @@ function VehicleDetail() {
                   : "—"}
               </p>
 
-              {/* ACTIONS */}
               <div className="mt-5 space-y-2">
                 <Button
                   type="button"
@@ -397,9 +392,6 @@ function VehicleDetail() {
         </div>
       </div>
 
-      {/* =====================================================
-          DELETE CONFIRMATION
-      ===================================================== */}
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
         <AlertDialogContent>
           <AlertDialogHeader>

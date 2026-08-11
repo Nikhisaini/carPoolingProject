@@ -36,7 +36,7 @@ const VehicleDetailsDialog = ({ open, setOpen, vehicle, onStatusUpdate }) => {
   }
 
   const owner = vehicle.ownerId;
-  const vehicleType = vehicle.vehicleTypeId;
+  const vehicleType = vehicle.licenceCategoryId;
   const fuelType = vehicle.fuelTypeId;
   const licence = vehicle.drivingLicenceId;
 
@@ -56,7 +56,7 @@ const VehicleDetailsDialog = ({ open, setOpen, vehicle, onStatusUpdate }) => {
   const getStatusClass = (status) => {
     switch (status) {
       case "Approved":
-        return "border-emerald-200 bg-emerald-50 text-emerald-700";
+        return "border-green-200 bg-green-50 text-green-700";
       case "Rejected":
         return "border-red-200 bg-red-50 text-red-700";
       default:

@@ -49,12 +49,10 @@ function Header() {
     <nav className="sticky top-0 z-50 w-full border-b border-gray-200 bg-white">
       <div className="mx-auto flex h-18 max-w-7xl items-center justify-between px-5 lg:px-8">
         <Link to="/" className="flex items-center gap-2">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-lg font-bold text-white">
-            B
-          </div>
+          <Car />
 
           <span className="text-xl font-bold tracking-tight text-gray-900">
-            BlaBlaCar
+            YooHuCar
           </span>
         </Link>
 
@@ -133,23 +131,15 @@ function Header() {
                     className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 transition hover:bg-gray-50"
                   >
                     <User size={18} />
-                    My Profile
+                    Profile
                   </Link>
                   <Link
-                    to="/my-rides"
-                    onClick={() => setOpen(false)}
-                    className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 transition hover:bg-gray-50"
-                  >
-                    <CarTaxiFront size={18} />
-                    My Rides
-                  </Link>
-                  <Link
-                    to="/add-licence"
+                    to="/my-licence"
                     onClick={() => setOpen(false)}
                     className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 transition hover:bg-gray-50"
                   >
                     <FileText size={18} />
-                    Add Licence
+                    Licence
                   </Link>
 
                   {/* <Link
@@ -162,12 +152,20 @@ function Header() {
                   </Link> */}
 
                   <Link
-                    to="/my-vehicle"
+                    to="/my-vehicles"
                     onClick={() => setOpen(false)}
                     className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 transition hover:bg-gray-50"
                   >
                     <Car size={18} />
-                    My Vehicles
+                    Vehicles
+                  </Link>
+                  <Link
+                    to="/my-rides"
+                    onClick={() => setOpen(false)}
+                    className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 transition hover:bg-gray-50"
+                  >
+                    <CarTaxiFront size={18} />
+                    Rides
                   </Link>
 
                   <div className="border-t border-gray-100">
