@@ -154,6 +154,7 @@ const publishRide = async (req, res) => {
         message: "Invalid vehicle ID",
       });
     }
+
     if (!departureLocation || !destinationLocation) {
       return res.status(400).json({
         success: false,
@@ -194,29 +195,56 @@ const publishRide = async (req, res) => {
       });
     }
 
-    if (
-      !departureLocation.city ||
-      !departureLocation.address ||
-      departureLocation.latitude === undefined ||
-      departureLocation.longitude === undefined
-    ) {
+    const validateLocation = (location, type) => {
+      if (
+        !location.city ||
+        !location.address ||
+        location.latitude === undefined ||
+        location.longitude === undefined
+      ) {
+        return {
+          success: false,
+          message: `${type} location must contain city, address, latitude and longitude`,
+        };
+      }
+
+      if (
+        !location.cityNormalized ||
+        typeof location.cityNormalized !== "string" ||
+        !location.cityNormalized.trim()
+      ) {
+        return {
+          success: false,
+          message: `${type} location must contain cityNormalized`,
+        };
+      }
+
+      return {
+        success: true,
+      };
+    };
+
+    const departureLocationValidation = validateLocation(
+      departureLocation,
+      "Departure",
+    );
+
+    if (!departureLocationValidation.success) {
       return res.status(400).json({
         success: false,
-        message:
-          "Departure location must contain city, address, latitude and longitude",
+        message: departureLocationValidation.message,
       });
     }
 
-    if (
-      !destinationLocation.city ||
-      !destinationLocation.address ||
-      destinationLocation.latitude === undefined ||
-      destinationLocation.longitude === undefined
-    ) {
+    const destinationLocationValidation = validateLocation(
+      destinationLocation,
+      "Destination",
+    );
+
+    if (!destinationLocationValidation.success) {
       return res.status(400).json({
         success: false,
-        message:
-          "Destination location must contain city, address, latitude and longitude",
+        message: destinationLocationValidation.message,
       });
     }
 
@@ -230,6 +258,16 @@ const publishRide = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Departure and destination cannot be the same",
+      });
+    }
+
+    if (
+      departureLocation.cityNormalized.trim().toLowerCase() ===
+      destinationLocation.cityNormalized.trim().toLowerCase()
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Departure and destination cities cannot be the same",
       });
     }
 
@@ -260,6 +298,7 @@ const publishRide = async (req, res) => {
           message: "Invalid estimated arrival date and time",
         });
       }
+
       if (arrivalDate <= departureData) {
         return res.status(400).json({
           success: false,
@@ -277,19 +316,13 @@ const publishRide = async (req, res) => {
       });
     }
 
-    const maxPassengerSeats = vehicleValidation.vehicle.seatingCapacity - 1;
+    const vehicleSeats = Number(vehicleValidation.vehicle.seatingCapacity);
+    const maxPassengerSeats = vehicleSeats - 1;
 
     if (seats > maxPassengerSeats) {
       return res.status(400).json({
         success: false,
         message: `You can publish a maximum of ${maxPassengerSeats} passenger seats for this vehicle`,
-      });
-    }
-
-    if (!Number.isInteger(seats) || seats < 1) {
-      return res.status(400).json({
-        success: false,
-        message: "Total seats must be a positive whole number",
       });
     }
 
@@ -303,6 +336,7 @@ const publishRide = async (req, res) => {
     }
 
     const selectedBookingMode = bookingMode || "AUTO";
+
     if (!["AUTO", "MANUAL"].includes(selectedBookingMode)) {
       return res.status(400).json({
         success: false,
@@ -311,39 +345,49 @@ const publishRide = async (req, res) => {
     }
 
     const session = await mongoose.startSession();
+
     let ride;
+
     try {
       await session.withTransaction(async () => {
         const [departureLocationDoc] = await RideLocation.create(
           [
             {
-              city: departureLocation.city,
-              state: departureLocation.state || "",
-              country: departureLocation.country || "India",
-              address: departureLocation.address,
-              placeName: departureLocation.placeName || "",
+              city: departureLocation.city.trim(),
+              cityNormalized: departureLocation.cityNormalized
+                .trim()
+                .toLowerCase(),
+              state: departureLocation.state?.trim() || "",
+              country: departureLocation.country?.trim() || "India",
+              address: departureLocation.address.trim(),
+              placeName: departureLocation.placeName?.trim() || "",
               latitude: Number(departureLocation.latitude),
               longitude: Number(departureLocation.longitude),
-              placeId: departureLocation.placeId || "",
+              placeId: departureLocation.placeId?.trim() || "",
             },
           ],
           { session },
         );
+
         const [destinationLocationDoc] = await RideLocation.create(
           [
             {
-              city: destinationLocation.city,
-              state: destinationLocation.state || "",
-              country: destinationLocation.country || "India",
-              address: destinationLocation.address,
-              placeName: destinationLocation.placeName || "",
+              city: destinationLocation.city.trim(),
+              cityNormalized: destinationLocation.cityNormalized
+                .trim()
+                .toLowerCase(),
+              state: destinationLocation.state?.trim() || "",
+              country: destinationLocation.country?.trim() || "India",
+              address: destinationLocation.address.trim(),
+              placeName: destinationLocation.placeName?.trim() || "",
               latitude: Number(destinationLocation.latitude),
               longitude: Number(destinationLocation.longitude),
-              placeId: destinationLocation.placeId || "",
+              placeId: destinationLocation.placeId?.trim() || "",
             },
           ],
           { session },
         );
+
         [ride] = await Ride.create(
           [
             {
@@ -356,7 +400,6 @@ const publishRide = async (req, res) => {
               totalSeats: seats,
               availableSeats: seats,
               pricePerSeat: price,
-              //   currency: "INR",
               bookingMode: selectedBookingMode,
               status: "PUBLISHED",
               description: description?.trim() || "",
@@ -383,6 +426,7 @@ const publishRide = async (req, res) => {
     } finally {
       await session.endSession();
     }
+
     return res.status(201).json({
       success: true,
       message: "Ride published successfully",
@@ -621,6 +665,7 @@ const searchRides = async (req, res) => {
     });
   }
 };
+
 export {
   publishRide,
   getRideById,

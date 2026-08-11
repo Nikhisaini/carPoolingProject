@@ -24,7 +24,11 @@ function PublishRideSeats() {
     totalSeats: previousTotalSeats,
   } = location.state || {};
 
-  const [totalSeats, setTotalSeats] = useState(previousTotalSeats || 1);
+  const initialSeats = Number(previousTotalSeats);
+
+  const [totalSeats, setTotalSeats] = useState(
+    Number.isInteger(initialSeats) && initialSeats >= 1 ? initialSeats : 1,
+  );
 
   const [vehicle, setVehicle] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -59,22 +63,38 @@ function PublishRideSeats() {
 
         const res = await api.get("/vehicle/my-vehicles");
 
-        const myVehicles = res.data?.vehicles || [];
+        const myVehicles =
+          res.data?.vehicles ||
+          res.data?.data?.vehicles ||
+          res.data?.data ||
+          [];
 
-        const selected = myVehicles.find(
+        const selectedVehicle = myVehicles.find(
           (item) =>
             item._id === vehicleId && item.verificationStatus === "Approved",
         );
 
-        if (!selected) {
+        if (!selectedVehicle) {
+          setVehicle(null);
           setErrorMessage("Selected vehicle is no longer available.");
           return;
         }
 
-        setVehicle(selected);
+        const seatingCapacity = Number(selectedVehicle.seatingCapacity);
+
+        if (!Number.isInteger(seatingCapacity) || seatingCapacity < 2) {
+          setVehicle(null);
+          setErrorMessage(
+            "Selected vehicle does not have enough seating capacity for passengers.",
+          );
+          return;
+        }
+
+        setVehicle(selectedVehicle);
       } catch (error) {
         console.error("Get Vehicle Error:", error);
 
+        setVehicle(null);
         setErrorMessage(
           error.response?.data?.message ||
             error.message ||
@@ -89,24 +109,37 @@ function PublishRideSeats() {
   }, [vehicleId]);
 
   const maxSeats = useMemo(() => {
-    if (!vehicle?.seatingCapacity) {
+    const seatingCapacity = Number(vehicle?.seatingCapacity);
+
+    if (!Number.isInteger(seatingCapacity) || seatingCapacity < 2) {
       return 0;
     }
 
-    return Math.max(vehicle.seatingCapacity - 1, 0);
+    return seatingCapacity - 1;
   }, [vehicle]);
 
   useEffect(() => {
-    if (maxSeats > 0 && totalSeats > maxSeats) {
-      setTotalSeats(maxSeats);
+    if (maxSeats <= 0) {
+      return;
     }
-  }, [maxSeats, totalSeats]);
+
+    setTotalSeats((currentSeats) => {
+      const seats = Number(currentSeats);
+
+      if (!Number.isInteger(seats) || seats < 1) {
+        return 1;
+      }
+
+      return Math.min(seats, maxSeats);
+    });
+  }, [maxSeats]);
 
   const isValid =
     !loading &&
     !errorMessage &&
     vehicle &&
     maxSeats > 0 &&
+    Number.isInteger(totalSeats) &&
     totalSeats >= 1 &&
     totalSeats <= maxSeats;
 
@@ -117,6 +150,7 @@ function PublishRideSeats() {
 
     navigate("/publish-ride/price", {
       state: {
+        ...location.state,
         departureLocation,
         destinationLocation,
         departureAt,
@@ -129,6 +163,7 @@ function PublishRideSeats() {
   const handleBack = () => {
     navigate("/publish-ride/vehicle", {
       state: {
+        ...location.state,
         departureLocation,
         destinationLocation,
         departureAt,
@@ -138,11 +173,27 @@ function PublishRideSeats() {
   };
 
   const increaseSeats = () => {
-    setTotalSeats((current) => Math.min(current + 1, maxSeats));
+    setTotalSeats((currentSeats) => {
+      const seats = Number(currentSeats);
+
+      if (!Number.isInteger(seats)) {
+        return 1;
+      }
+
+      return Math.min(seats + 1, maxSeats);
+    });
   };
 
   const decreaseSeats = () => {
-    setTotalSeats((current) => Math.max(current - 1, 1));
+    setTotalSeats((currentSeats) => {
+      const seats = Number(currentSeats);
+
+      if (!Number.isInteger(seats)) {
+        return 1;
+      }
+
+      return Math.max(seats - 1, 1);
+    });
   };
 
   if (

@@ -9,13 +9,14 @@ import {
   ChevronDown,
   PlusCircle,
   Search,
-  FerrisWheel,
   CarTaxiFront,
 } from "lucide-react";
 import { logout } from "@/redux/slices/authSlice";
+import api from "@/services/Api";
 
 function Header() {
   const [open, setOpen] = useState(false);
+  const [profile, setProfile] = useState(null);
   const dropdownRef = useRef(null);
 
   const navigate = useNavigate();
@@ -23,11 +24,33 @@ function Header() {
 
   const { user, isAuthenticated } = useSelector((state) => state.auth);
 
-  const handleLogout = () => {
-    dispatch(logout());
-    setOpen(false);
-    navigate("/login");
-  };
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!isAuthenticated) {
+        setProfile(null);
+        return;
+      }
+
+      if (user?.profileImage) {
+        setProfile(user);
+        return;
+      }
+
+      try {
+        const response = await api.get("/profile");
+        const profileData = response.data?.data || response.data?.user;
+
+        if (profileData) {
+          setProfile(profileData);
+        }
+      } catch (error) {
+        console.error("Header Profile Error:", error);
+        setProfile(user || null);
+      }
+    };
+
+    fetchProfile();
+  }, [isAuthenticated, user]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -35,19 +58,41 @@ function Header() {
         setOpen(false);
       }
     };
+
     document.addEventListener("mousedown", handleClickOutside);
+
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
 
-  const firstName = user?.firstName || "User";
-  const lastName = user?.lastName || "";
-  const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+  const handleLogout = () => {
+    dispatch(logout());
+    setProfile(null);
+    setOpen(false);
+    navigate("/login");
+  };
+
+  const currentUser = profile || user;
+
+  const firstName = currentUser?.firstName || "User";
+  const lastName = currentUser?.lastName || "";
+
+  const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`
+    .toUpperCase()
+    .trim();
+
+  const profileImage = currentUser?.profileImage;
+
+  const profileImageUrl = profileImage
+    ? profileImage.startsWith("http")
+      ? profileImage
+      : `http://localhost:8081/${profileImage.replace(/^\/+/, "")}`
+    : null;
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-gray-200 bg-white">
-      <div className="mx-auto flex h-18 max-w-7xl items-center justify-between px-5 lg:px-8">
+      <div className="mx-auto flex h-[72px] max-w-7xl items-center justify-between px-5 lg:px-8">
         <Link to="/" className="flex items-center gap-2">
           <Car />
 
@@ -64,6 +109,7 @@ function Header() {
           >
             <Search size={20} />
           </Link>
+
           <Link
             to="/publish-ride"
             className="flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-100 hover:text-blue-600"
@@ -81,7 +127,24 @@ function Header() {
           >
             {isAuthenticated ? (
               <>
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold text-white">
+                {profileImageUrl ? (
+                  <img
+                    src={profileImageUrl}
+                    alt={`${firstName} ${lastName}`}
+                    className="h-9 w-9 rounded-full object-cover"
+                    onError={(event) => {
+                      event.currentTarget.style.display = "none";
+                      event.currentTarget.nextElementSibling.style.display =
+                        "flex";
+                    }}
+                  />
+                ) : null}
+
+                <div
+                  className={`h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold text-white ${
+                    profileImageUrl ? "hidden" : "flex"
+                  }`}
+                >
                   {initials}
                 </div>
 
@@ -109,7 +172,24 @@ function Header() {
                 <>
                   <div className="border-b border-gray-100 bg-gray-50 px-4 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-600 font-semibold text-white">
+                      {profileImageUrl ? (
+                        <img
+                          src={profileImageUrl}
+                          alt={`${firstName} ${lastName}`}
+                          className="h-11 w-11 shrink-0 rounded-full object-cover"
+                          onError={(event) => {
+                            event.currentTarget.style.display = "none";
+                            event.currentTarget.nextElementSibling.style.display =
+                              "flex";
+                          }}
+                        />
+                      ) : null}
+
+                      <div
+                        className={`h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-600 font-semibold text-white ${
+                          profileImageUrl ? "hidden" : "flex"
+                        }`}
+                      >
                         {initials}
                       </div>
 
@@ -119,7 +199,7 @@ function Header() {
                         </p>
 
                         <p className="truncate text-xs text-gray-500">
-                          {user?.email}
+                          {currentUser?.email}
                         </p>
                       </div>
                     </div>
@@ -133,6 +213,7 @@ function Header() {
                     <User size={18} />
                     Profile
                   </Link>
+
                   <Link
                     to="/my-licence"
                     onClick={() => setOpen(false)}
@@ -142,15 +223,6 @@ function Header() {
                     Licence
                   </Link>
 
-                  {/* <Link
-                    to="/add-vehicle"
-                    onClick={() => setOpen(false)}
-                    className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 transition hover:bg-gray-50"
-                  >
-                    <Car size={18} />
-                    Add Vehicle
-                  </Link> */}
-
                   <Link
                     to="/my-vehicles"
                     onClick={() => setOpen(false)}
@@ -159,6 +231,7 @@ function Header() {
                     <Car size={18} />
                     Vehicles
                   </Link>
+
                   <Link
                     to="/my-rides"
                     onClick={() => setOpen(false)}

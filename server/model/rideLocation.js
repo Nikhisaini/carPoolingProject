@@ -17,7 +17,11 @@ const rideLocationSchema = new mongoose.Schema(
       trim: true,
       default: "India",
     },
-
+    cityNormalized: {
+      type: String,
+      required: true,
+      index: true,
+    },
     address: {
       type: String,
       required: true,

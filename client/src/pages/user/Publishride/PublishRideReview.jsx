@@ -115,30 +115,36 @@ function PublishRideReview() {
         vehicleId,
 
         departureLocation: {
-          city: departureLocation.city,
-          state: departureLocation.state || "",
-          country: departureLocation.country || "India",
-          address: departureLocation.address,
-          placeName: departureLocation.placeName || "",
+          city: departureLocation.city?.trim() || "",
+          cityNormalized:
+            departureLocation.cityNormalized?.trim().toLowerCase() || "",
+          state: departureLocation.state?.trim() || "",
+          country: departureLocation.country?.trim() || "India",
+          address: departureLocation.address?.trim() || "",
+          placeName: departureLocation.placeName?.trim() || "",
           latitude: Number(departureLocation.latitude),
           longitude: Number(departureLocation.longitude),
-          placeId: departureLocation.placeId || "",
+          placeId: departureLocation.placeId?.trim() || "",
         },
 
         destinationLocation: {
-          city: destinationLocation.city,
-          state: destinationLocation.state || "",
-          country: destinationLocation.country || "India",
-          address: destinationLocation.address,
-          placeName: destinationLocation.placeName || "",
+          city: destinationLocation.city?.trim() || "",
+          cityNormalized:
+            destinationLocation.cityNormalized?.trim().toLowerCase() || "",
+          state: destinationLocation.state?.trim() || "",
+          country: destinationLocation.country?.trim() || "India",
+          address: destinationLocation.address?.trim() || "",
+          placeName: destinationLocation.placeName?.trim() || "",
           latitude: Number(destinationLocation.latitude),
           longitude: Number(destinationLocation.longitude),
-          placeId: destinationLocation.placeId || "",
+          placeId: destinationLocation.placeId?.trim() || "",
         },
+
         departureAt,
         totalSeats: Number(totalSeats),
         pricePerSeat: Number(pricePerSeat),
         bookingMode: "AUTO",
+
         preferences: {
           smokingAllowed: Boolean(preferences.smokingAllowed),
           petsAllowed: Boolean(preferences.petsAllowed),
@@ -147,16 +153,26 @@ function PublishRideReview() {
           conversationAllowed: Boolean(preferences.conversationAllowed),
         },
       };
+
+      if (
+        !payload.departureLocation.cityNormalized ||
+        !payload.destinationLocation.cityNormalized
+      ) {
+        throw new Error("Invalid departure or destination city.");
+      }
+
       const res = await api.post("/ride/publish", payload);
 
       if (!res.data?.success) {
         throw new Error(res.data?.message || "Unable to publish ride.");
       }
+
       navigate("/my-rides", {
         replace: true,
       });
     } catch (error) {
       console.error("Publish Ride Error:", error);
+
       setErrorMessage(
         error.response?.data?.message ||
           error.message ||

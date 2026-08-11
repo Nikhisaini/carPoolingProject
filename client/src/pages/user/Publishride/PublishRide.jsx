@@ -13,22 +13,33 @@ import {
 } from "@/components/ui/card";
 import api from "@/services/Api";
 
+const normalizeCity = (value) => {
+  return (
+    value?.trim().toLowerCase().replace(/\s+/g, " ").replace(/[.,]/g, "") || ""
+  );
+};
+
 function PublishRide() {
   const navigate = useNavigate();
   const location = useLocation();
+
   const [loading, setLoading] = useState(true);
   const [eligibility, setEligibility] = useState(null);
   const [departureLocation, setDepartureLocation] = useState(null);
   const [destinationLocation, setDestinationLocation] = useState(null);
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
     const checkEligibility = async () => {
       try {
         setLoading(true);
+
         const res = await api.get("/ride/publish-eligibility");
+
         setEligibility(res.data);
       } catch (error) {
-        console.log("Eligibility check error:", error);
+        console.error("Eligibility check error:", error);
+
         setEligibility({
           eligible: false,
           status: "ERROR",
@@ -38,40 +49,89 @@ function PublishRide() {
         setLoading(false);
       }
     };
+
     checkEligibility();
   }, []);
 
   useEffect(() => {
     const previousState = location.state;
+
     if (previousState?.departureLocation) {
       setDepartureLocation(previousState.departureLocation);
     }
+
     if (previousState?.destinationLocation) {
       setDestinationLocation(previousState.destinationLocation);
     }
   }, [location.state]);
 
   const handleDepartureSelect = (locationData) => {
+    setErrorMessage("");
     setDepartureLocation(locationData);
   };
 
   const handleDestinationSelect = (locationData) => {
+    setErrorMessage("");
     setDestinationLocation(locationData);
   };
 
   const handleContinue = () => {
+    setErrorMessage("");
+
     if (!eligibility?.eligible) {
       return;
     }
-    if (!departureLocation || !destinationLocation) {
+
+    if (!departureLocation) {
+      setErrorMessage("Please select your departure location");
+      return;
+    }
+
+    if (!destinationLocation) {
+      setErrorMessage("Please select your destination location");
+      return;
+    }
+
+    const departureCity =
+      departureLocation.cityNormalized || normalizeCity(departureLocation.city);
+
+    const destinationCity =
+      destinationLocation.cityNormalized ||
+      normalizeCity(destinationLocation.city);
+
+    if (!departureCity || !destinationCity) {
+      setErrorMessage(
+        "Please select valid departure and destination locations",
+      );
+      return;
+    }
+
+    if (departureCity === destinationCity) {
+      setErrorMessage("Departure and destination cities cannot be the same");
+      return;
+    }
+
+    if (
+      departureLocation.latitude === undefined ||
+      departureLocation.longitude === undefined ||
+      destinationLocation.latitude === undefined ||
+      destinationLocation.longitude === undefined
+    ) {
+      setErrorMessage("Please select both locations from the suggestions");
       return;
     }
 
     navigate("/publish-ride/date-time", {
       state: {
         ...location.state,
-        departureLocation,
-        destinationLocation,
+        departureLocation: {
+          ...departureLocation,
+          cityNormalized: departureCity,
+        },
+        destinationLocation: {
+          ...destinationLocation,
+          cityNormalized: destinationCity,
+        },
       },
     });
   };
@@ -79,22 +139,33 @@ function PublishRide() {
   const isValid =
     eligibility?.eligible &&
     departureLocation !== null &&
-    destinationLocation !== null;
+    destinationLocation !== null &&
+    normalizeCity(departureLocation?.city) !==
+      normalizeCity(destinationLocation?.city);
 
   if (loading) {
-    return <div>Checking eligibility...</div>;
+    return (
+      <div className="flex min-h-[70vh] items-center justify-center">
+        {" "}
+        <p className="text-sm text-gray-500">Checking eligibility... </p>{" "}
+      </div>
+    );
   }
 
   if (!eligibility?.eligible) {
     return (
       <div className="flex min-h-[70vh] items-center justify-center px-4">
+        {" "}
         <Card className="w-full max-w-xl rounded-2xl border-gray-200 shadow-lg">
+          {" "}
           <CardHeader className="px-8 pt-8 text-center">
+            {" "}
             <CardTitle className="text-2xl font-bold">
-              Cannot Publish ride
+              Cannot Publish Ride{" "}
             </CardTitle>
             <CardDescription className="mt-2 text-base">
-              {eligibility.message}
+              {eligibility?.message ||
+                "You are not eligible to publish a ride."}
             </CardDescription>
             <CardContent className="py-5">
               <Button
@@ -110,20 +181,25 @@ function PublishRide() {
       </div>
     );
   }
+
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
+      {" "}
       <div className="mb-8">
-        <p className="text-sm font-medium text-blue-600">Publish a ride</p>
-
+        {" "}
+        <p className="text-sm font-medium text-blue-600">Publish a ride </p>
         <h1 className="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
           Where are you going?
         </h1>
-
         <p className="mt-2 text-gray-600">
           Tell us where your journey starts and where you're going.
         </p>
       </div>
-
+      {errorMessage && (
+        <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4">
+          <p className="text-sm font-medium text-red-700">{errorMessage}</p>
+        </div>
+      )}
       <Card className="overflow-visible border-gray-200 shadow-sm">
         <CardHeader className="border-b border-gray-100">
           <CardTitle className="text-xl">Your route</CardTitle>

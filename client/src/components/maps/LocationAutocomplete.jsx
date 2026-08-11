@@ -2,6 +2,52 @@ import { useEffect, useRef, useState } from "react";
 import { useMapsLibrary } from "@vis.gl/react-google-maps";
 import { MapPin } from "lucide-react";
 
+const normalizeCity = (value) => {
+  return (
+    value?.trim().toLowerCase().replace(/\s+/g, " ").replace(/[.,]/g, "") || ""
+  );
+};
+
+const getComponent = (components, types) => {
+  for (const type of types) {
+    const component = components.find((item) => item.types?.includes(type));
+
+    if (component?.longText) {
+      return component.longText.trim();
+    }
+  }
+
+  return "";
+};
+
+const getCityFromPlace = (components, displayName) => {
+  const locality = getComponent(components, [
+    "locality",
+    "postal_town",
+    "sublocality_level_1",
+    "sublocality",
+  ]);
+
+  if (locality) {
+    return locality;
+  }
+
+  const administrativeArea = getComponent(components, [
+    "administrative_area_level_2",
+  ]);
+
+  if (administrativeArea) {
+    return administrativeArea
+      .replace(/\s+Division$/i, "")
+      .replace(/\s+District$/i, "")
+      .trim();
+  }
+
+  const fallback = displayName?.trim() || "";
+
+  return fallback;
+};
+
 function LocationAutocomplete({
   label,
   placeholder = "Search location",
@@ -20,7 +66,9 @@ function LocationAutocomplete({
   const requestIdRef = useRef(0);
 
   useEffect(() => {
-    if (!places) return;
+    if (!places) {
+      return;
+    }
 
     setSessionToken(new places.AutocompleteSessionToken());
   }, [places]);
@@ -35,7 +83,9 @@ function LocationAutocomplete({
         setSuggestions([]);
       }
     };
+
     document.addEventListener("mousedown", handleOutsideClick);
+
     return () => {
       document.removeEventListener("mousedown", handleOutsideClick);
     };
@@ -65,33 +115,31 @@ function LocationAutocomplete({
     const getSuggestions = async () => {
       try {
         setIsLoading(true);
+
         const request = {
           input: inputValue.trim(),
           includedRegionCodes: ["in"],
           sessionToken,
         };
+
         const { suggestions } =
           await places.AutocompleteSuggestion.fetchAutocompleteSuggestions(
             request,
           );
+
         if (cancelled || currentRequestId !== requestIdRef.current) {
           return;
         }
+
         const validSuggestions = (suggestions || []).filter(
           (suggestion) => suggestion.placePrediction,
         );
 
         setSuggestions(validSuggestions);
-
-        if (validSuggestions.length > 0) {
-          setIsOpen(true);
-        } else {
-          setIsOpen(false);
-        }
+        setIsOpen(validSuggestions.length > 0);
       } catch (error) {
         if (!cancelled) {
           console.error("Google Places Autocomplete Error:", error);
-
           setSuggestions([]);
           setIsOpen(false);
         }
@@ -112,6 +160,7 @@ function LocationAutocomplete({
 
   const handleInputChange = (event) => {
     const newValue = event.target.value;
+
     selectedPlaceRef.current = false;
     setInputValue(newValue);
 
@@ -124,13 +173,16 @@ function LocationAutocomplete({
   const handleSelect = async (suggestion) => {
     try {
       const placePrediction = suggestion?.placePrediction;
-      if (!placePrediction) return;
+
+      if (!placePrediction) {
+        return;
+      }
 
       setIsOpen(false);
       setSuggestions([]);
       requestIdRef.current += 1;
-
       setIsLoading(true);
+
       const place = placePrediction.toPlace();
 
       await place.fetchFields({
@@ -151,29 +203,43 @@ function LocationAutocomplete({
       }
 
       const addressComponents = place.addressComponents || [];
-      const getAddressComponent = (type) => {
-        const component = addressComponents.find((item) =>
-          item.types?.includes(type),
-        );
 
-        return component?.longText || "";
-      };
+      const city = getCityFromPlace(
+        addressComponents,
+        place.displayName || place.formattedAddress,
+      );
+
+      const state = getComponent(addressComponents, [
+        "administrative_area_level_1",
+      ]);
+
+      const country = getComponent(addressComponents, ["country"]) || "India";
+
+      const cityNormalized = normalizeCity(city);
+
+      if (!cityNormalized) {
+        console.error("Unable to determine city for selected place");
+        return;
+      }
+
       const selectedLocation = {
         placeId: place.id || "",
         placeName: place.displayName || "",
         address: place.formattedAddress || "",
-        city:
-          getAddressComponent("locality") ||
-          getAddressComponent("administrative_area_level_2"),
-        state: getAddressComponent("administrative_area_level_1"),
-        country: getAddressComponent("country") || "India",
+        city,
+        cityNormalized,
+        state,
+        country,
         latitude: location.lat(),
         longitude: location.lng(),
       };
 
       selectedPlaceRef.current = true;
+
       setInputValue(selectedLocation.placeName || selectedLocation.address);
+
       onPlaceSelect?.(selectedLocation);
+
       setSessionToken(new places.AutocompleteSessionToken());
     } catch (error) {
       console.error("Place Selection Error:", error);
@@ -191,6 +257,7 @@ function LocationAutocomplete({
           {label}
         </label>
       )}
+
       <div className="relative">
         <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
           <MapPin className="h-4 w-4 text-slate-400" />
@@ -223,7 +290,9 @@ function LocationAutocomplete({
             {suggestions.map((suggestion) => {
               const prediction = suggestion.placePrediction;
 
-              if (!prediction) return null;
+              if (!prediction) {
+                return null;
+              }
 
               return (
                 <button
