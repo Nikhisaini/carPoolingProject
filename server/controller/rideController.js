@@ -59,7 +59,7 @@ const getPublishRideEligibility = async (req, res) => {
       drivingLicenceId: licence._id,
       isActive: true,
     })
-      .populate("vehicleTypeId", "name")
+      .populate("licenceCategoryId", "name type")
       .populate("fuelTypeId", "name")
       .lean();
 
@@ -453,8 +453,8 @@ const getRideById = async (req, res) => {
           "brand model manufactureYear color registrationNumber seatingCapacity vehicleImages airCondition luggageCapacity verificationStatus vehicleTypeId fuelTypeId",
         populate: [
           {
-            path: "vehicleTypeId",
-            select: "name",
+            path: "licenceCategoryId",
+            select: "name type",
           },
           {
             path: "fuelTypeId",

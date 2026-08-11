@@ -5,9 +5,16 @@ import LicenceCategoryMapping from "../model/LicenceCategoryMapping.js";
 const addLicence = async (req, res) => {
   try {
     const userId = req.user._id;
-    const { licenceNumber, categories } = req.body;
+    const licenceNumber = req.body.licenceNumber?.trim().toUpperCase();
+    const { dob, categories } = req.body;
 
-    // Check if user already has a licence
+    if (!Array.isArray(categories) || categories.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Please select at least one licence category.",
+      });
+    }
+
     const existingLicence = await Licence.findOne({ userId });
 
     if (existingLicence) {
@@ -17,7 +24,6 @@ const addLicence = async (req, res) => {
       });
     }
 
-    // Check duplicate licence number
     const existingLicenceNumber = await Licence.findOne({
       licenceNumber,
     });
@@ -29,42 +35,71 @@ const addLicence = async (req, res) => {
       });
     }
 
-    // Verify categories exist and are active
+    const uniqueCategories = [...new Set(categories)];
+
+    if (uniqueCategories.length !== categories.length) {
+      return res.status(400).json({
+        success: false,
+        message: "Duplicate licence categories are not allowed.",
+      });
+    }
+
     const validCategories = await LicenceCategory.find({
-      _id: { $in: categories },
+      _id: { $in: uniqueCategories },
       isActive: true,
     });
 
-    if (validCategories.length !== categories.length) {
+    if (validCategories.length !== uniqueCategories.length) {
       return res.status(400).json({
         success: false,
         message: "One or more licence categories are invalid or inactive.",
       });
     }
+    if (!dob) {
+      return res.status(400).json({
+        success: false,
+        message: "Date of birth is required.",
+      });
+    }
 
-    // Create licence
+    const parsedDob = new Date(dob);
+
+    if (Number.isNaN(parsedDob.getTime())) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid date of birth.",
+      });
+    }
+
+    if (parsedDob > new Date()) {
+      return res.status(400).json({
+        success: false,
+        message: "Date of birth cannot be in the future.",
+      });
+    }
+
     const licence = await Licence.create({
       userId,
       licenceNumber,
+      dob: parsedDob,
       frontImage: req.files.frontImage[0].path,
       backImage: req.files.backImage[0].path,
       verificationStatus: "Pending",
     });
 
-    // Create category mappings
-    const categoryMappings = categories.map((categoryId) => ({
+    const categoryMappings = uniqueCategories.map((categoryId) => ({
       drivingLicenceId: licence._id,
       licenceCategoryId: categoryId,
     }));
 
     await LicenceCategoryMapping.insertMany(categoryMappings);
 
-    // Fetch licence categories
     const licenceCategories = await LicenceCategoryMapping.find({
       drivingLicenceId: licence._id,
+      isActive: true,
     }).populate({
       path: "licenceCategoryId",
-      select: "name",
+      select: "type name",
     });
 
     return res.status(201).json({
@@ -83,12 +118,51 @@ const addLicence = async (req, res) => {
   }
 };
 
+const getLicenceById = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    const licence = await Licence.findOne({ userId });
+
+    if (!licence) {
+      return res.status(400).json({
+        success: false,
+        message: "Licence not found",
+      });
+    }
+
+    const categoryMappings = await LicenceCategoryMapping.find({
+      drivingLicenceId: licence._id,
+      isActive: true,
+    }).populate("licenceCategoryId");
+
+    const categories = categoryMappings.map(
+      (mapping) => mapping.licenceCategoryId,
+    );
+
+    return res.status(200).json({
+      success: true,
+      licence: {
+        ...licence.toObject(),
+        categories,
+      },
+    });
+  } catch (error) {
+    console.log("Get Licence Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
+  }
+};
+
 const checkApprovedLicence = async (req, res) => {
   try {
     const userId = req.user._id;
 
     const licence = await Licence.findOne({
-      userId: userId,
+      userId,
       verificationStatus: "Approved",
     });
 
@@ -104,11 +178,13 @@ const checkApprovedLicence = async (req, res) => {
       message: "Licence approved",
     });
   } catch (error) {
+    console.error("Check Approved Licence Error:", error);
+
     return res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Internal server error",
     });
   }
 };
 
-export { addLicence, checkApprovedLicence };
+export { addLicence, checkApprovedLicence, getLicenceById };

@@ -14,9 +14,9 @@ const vehicleSchema = new mongoose.Schema(
       required: true,
     },
 
-    vehicleTypeId: {
+    licenceCategoryId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "VehicleType",
+      ref: "LicenceCategory",
       required: true,
     },
 
@@ -99,11 +99,6 @@ const vehicleSchema = new mongoose.Schema(
       default: "Pending",
     },
 
-    // rejectionReason: {
-    //   type: String,
-    //   default: "",
-    // },
-
     verifiedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -114,6 +109,7 @@ const vehicleSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+
     isActive: {
       type: Boolean,
       default: true,
@@ -121,9 +117,10 @@ const vehicleSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+    versionKey: false,
   },
 );
 
-const Vehicle = mongoose.model("Vehicle", vehicleSchema);
+const Vehicle = mongoose.model("Vehicle", vehicleSchema, "vehicles");
 
 export default Vehicle;

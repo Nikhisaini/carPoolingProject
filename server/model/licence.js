@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const LicenceSchema = new mongoose.Schema(
+const licenceSchema = new mongoose.Schema(
   {
     userId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -15,6 +15,10 @@ const LicenceSchema = new mongoose.Schema(
       unique: true,
       uppercase: true,
       trim: true,
+    },
+    dob: {
+      type: Date,
+      required: true,
     },
 
     frontImage: {
@@ -43,16 +47,28 @@ const LicenceSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
-
-    // rejectReason: {
-    //   type: String,
-    //   default: "",
-    // },
-
-    // adminRemark: {
-    //   type: String,
-    //   default: "",
-    // },
+    verificationResult: {
+      type: String,
+      enum: ["VALID", "INVALID", "ERROR"],
+      default: null,
+    },
+    verificationProvider: {
+      type: String,
+      enum: ["Cashfree"],
+      default: null,
+    },
+    verificationReferenceId: {
+      type: String,
+      default: null,
+    },
+    verificationAttemptedAt: {
+      type: String,
+      default: null,
+    },
+    verificationFailureReason: {
+      type: String,
+      default: null,
+    },
   },
   {
     timestamps: true,
@@ -60,6 +76,6 @@ const LicenceSchema = new mongoose.Schema(
   },
 );
 
-const Licence = mongoose.model("Licence", LicenceSchema);
+const Licence = mongoose.model("Licence", licenceSchema, "licences");
 
 export default Licence;

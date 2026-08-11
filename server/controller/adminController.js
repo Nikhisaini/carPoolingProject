@@ -3,6 +3,7 @@ import Licence from "../model/licence.js";
 import LicenceCategoryMapping from "../model/LicenceCategoryMapping.js";
 import User from "../model/user.js";
 import Vehicle from "../model/vehicle.js";
+import verifyDrivingLicence from "../services/cashfreeVerification.js";
 
 const getAllLicence = async (req, res) => {
   try {
@@ -63,6 +64,22 @@ const approveLicence = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "Driving Licence not found",
+      });
+    }
+    if (
+      licence.verificationProvider !== "Cashfree" ||
+      !licence.verificationReferenceId
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Driving licence must be verified before approval.",
+      });
+    }
+
+    if (licence.verificationResult !== "VALID") {
+      return res.status(400).json({
+        success: false,
+        message: "Driving licence verification failed. It cannot be approved.",
       });
     }
 
@@ -140,24 +157,141 @@ const rejectLicence = async (req, res) => {
   }
 };
 
+const verifyLicence = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!req.user?._id) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    const licence = await Licence.findById(id);
+
+    if (!licence) {
+      return res.status(404).json({
+        success: false,
+        message: "Licence not found",
+      });
+    }
+
+    if (licence.verificationStatus !== "Pending") {
+      return res.status(400).json({
+        success: false,
+        message: `Driving licence is already ${licence.verificationStatus}`,
+      });
+    }
+
+    if (!licence.dob) {
+      return res.status(400).json({
+        success: false,
+        message: "Date of birth is missing from the licence",
+      });
+    }
+
+    licence.verificationProvider = "Cashfree";
+    licence.verificationAttemptedAt = new Date();
+    licence.verificationFailureReason = null;
+    licence.verificationResult = null;
+
+    await licence.save();
+    const dob = licence.dob.toISOString().split("T")[0];
+
+    let cashfreeResponse;
+    try {
+      cashfreeResponse = await verifyDrivingLicence(licence.licenceNumber, dob);
+    } catch (error) {
+      console.error(
+        "Cashfree Verification Error:",
+        error.response?.data || error.message,
+      );
+
+      licence.verificationResult = "ERROR";
+      licence.verificationFailureReason =
+        error.response?.data?.message ||
+        error.response?.data?.error_msg ||
+        error.message ||
+        "Cashfree verification failed";
+
+      await licence.save();
+
+      return res.status(502).json({
+        success: false,
+        message: "Driving licence verification service failed.",
+        verification: {
+          status: "ERROR",
+          referenceId: null,
+          reason: licence.verificationFailureReason,
+        },
+      });
+    }
+
+    licence.verificationReferenceId =
+      cashfreeResponse.reference_id?.toString() || null;
+
+    if (cashfreeResponse.status === "VALID") {
+      licence.verificationResult = "VALID";
+      licence.verificationFailureReason = null;
+
+      await licence.save();
+
+      return res.status(200).json({
+        success: true,
+        message: "Driving Licence verified successfully.",
+        verification: {
+          status: "VALID",
+          referenceId: cashfreeResponse.reference_id,
+        },
+      });
+    }
+
+    licence.verificationResult = "INVALID";
+    licence.verificationFailureReason =
+      cashfreeResponse.message ||
+      cashfreeResponse.error_msg ||
+      "Driving licence could not be verified.";
+
+    await licence.save();
+
+    return res.status(200).json({
+      success: false,
+      message: "Driving Licence verification failed.",
+      verification: {
+        status: "INVALID",
+        referenceId: cashfreeResponse.reference_id || null,
+        reason: licence.verificationFailureReason,
+      },
+    });
+  } catch (error) {
+    console.error("Verify Licence Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
+  }
+};
+
 const getAllVehicle = async (req, res) => {
   try {
     const vehicles = await Vehicle.find({})
       .populate({
         path: "ownerId",
-        select: "firstName  lastName email phoneNumber  profileImage",
+        select: "firstName lastName email phoneNumber profileImage",
       })
       .populate({
         path: "drivingLicenceId",
         select: "licenceNumber verificationStatus frontImage backImage",
       })
       .populate({
-        path: "vehicleTypeId",
-        select: "name description",
+        path: "licenceCategoryId",
+        select: "name type",
       })
       .populate({
         path: "fuelTypeId",
-        select: "name ",
+        select: "name",
       })
       .populate({
         path: "verifiedBy",
@@ -175,7 +309,7 @@ const getAllVehicle = async (req, res) => {
 
     return res.status(500).json({
       success: false,
-      message: "Internal server error",
+      message: "Internal Server Error",
     });
   }
 };
@@ -360,6 +494,7 @@ const unblockUser = async (req, res) => {
 };
 export {
   getAllLicence,
+  verifyLicence,
   approveLicence,
   rejectLicence,
   getAllVehicle,

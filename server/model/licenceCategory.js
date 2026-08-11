@@ -1,26 +1,37 @@
 import mongoose from "mongoose";
 
-const licenceCategorySchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: true,
-    unique: true,
-    trim: true,
-    uppercase: true,
+const licenceCategorySchema = new mongoose.Schema(
+  {
+    type: {
+      type: String,
+      required: true,
+      trim: true,
+      uppercase: true,
+    },
+
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
   },
-  description: {
-    type: String,
+  {
+    timestamps: true,
+    versionKey: false,
   },
-  isActive: {
-    type: Boolean,
-    default: true,
-  },
-});
+);
+
+licenceCategorySchema.index({ type: 1, name: 1 }, { unique: true });
 
 const LicenceCategory = mongoose.model(
   "LicenceCategory",
   licenceCategorySchema,
-  "licence_category",
+  "category",
 );
 
 export default LicenceCategory;

@@ -10,12 +10,19 @@ import {
   rejectLicence,
   rejectVehicle,
   unblockUser,
+  verifyLicence,
 } from "../controller/adminController.js";
 import authorizeRoles from "../middleware/authorizeRoles.js";
 
 const router = express.Router();
 /* ================ Licence Verification Routes ==================== */
 router.get("/licences", authMiddleware, authorizeRoles("Admin"), getAllLicence);
+router.put(
+  "/licence/:id/verify",
+  authMiddleware,
+  authorizeRoles("Admin"),
+  verifyLicence,
+);
 router.put(
   "/licence/:id/approve",
   authMiddleware,

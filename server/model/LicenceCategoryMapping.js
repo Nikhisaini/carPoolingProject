@@ -7,11 +7,13 @@ const licenceCategoryMappingSchema = new mongoose.Schema(
       ref: "Licence",
       required: true,
     },
+
     licenceCategoryId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "LicenceCategory",
       required: true,
     },
+
     isActive: {
       type: Boolean,
       default: true,
@@ -19,6 +21,7 @@ const licenceCategoryMappingSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+    versionKey: false,
   },
 );
 
@@ -31,10 +34,11 @@ licenceCategoryMappingSchema.index(
     unique: true,
   },
 );
+
 const LicenceCategoryMapping = mongoose.model(
   "LicenceCategoryMapping",
   licenceCategoryMappingSchema,
-  "licence_categoryMapping",
+  "licence_categories",
 );
 
 export default LicenceCategoryMapping;
