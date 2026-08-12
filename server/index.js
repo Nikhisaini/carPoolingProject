@@ -1,5 +1,6 @@
 import "dotenv/config";
 import express from "express";
+import http from "http";
 import connectDb from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import cors from "cors";
@@ -13,6 +14,7 @@ import adminRoutes from "./routes/adminRoutes.js";
 import rideRouter from "./routes/rideRoutes.js";
 import startLicenceVerificationCron from "./cron/licenceVerificationCron.js";
 import bookingRoutes from "./routes/bookingRoutes.js";
+import { initializeSocket } from "./socket/socketServer.js";
 await connectDb();
 startLicenceVerificationCron();
 const app = express();
@@ -35,7 +37,10 @@ app.use("/api/ride", rideRouter);
 app.use("/api/booking", bookingRoutes);
 
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+
 const PORT = process.env.PORT || 8081;
-app.listen(PORT, () => {
+const httpServer = http.createServer(app);
+initializeSocket(httpServer);
+httpServer.listen(PORT, () => {
   console.log(`Server running on ${PORT}`);
 });

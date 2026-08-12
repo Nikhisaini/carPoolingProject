@@ -2,12 +2,15 @@ import mongoose from "mongoose";
 import Ride from "../model/ride.js";
 import BookingSeat from "../model/bookingSeat.js";
 import Booking from "../model/bookings.js";
+import { getIO } from "../socket/socketServer.js";
 
 const createBooking = async ({ rideId, passengerId, seats }) => {
   const session = await mongoose.startSession();
 
   try {
     let booking;
+    let remainingAvailableSeats;
+
     await session.withTransaction(async () => {
       const ride = await Ride.findOne({
         _id: rideId,
@@ -30,6 +33,14 @@ const createBooking = async ({ rideId, passengerId, seats }) => {
         throw new Error(`Only ${ride.availableSeats} seat(s) are available`);
       }
 
+      const invalidSeats = seats.filter(
+        (seatNumber) => seatNumber < 1 || seatNumber > ride.totalSeats,
+      );
+
+      if (invalidSeats.length > 0) {
+        throw new Error(`Seat number must be between 1 and ${ride.totalSeats}`);
+      }
+
       const existingSeats = await BookingSeat.find({
         rideId,
         seatNumber: {
@@ -44,6 +55,7 @@ const createBooking = async ({ rideId, passengerId, seats }) => {
 
       if (existingSeats.length > 0) {
         const occupiedSeats = existingSeats.map((seat) => seat.seatNumber);
+
         throw new Error(
           `Seat(s) ${occupiedSeats.join(", ")} are no longer available`,
         );
@@ -69,7 +81,7 @@ const createBooking = async ({ rideId, passengerId, seats }) => {
             totalAmount,
             status: bookingStatus,
             bookedAt: new Date(),
-            confimedAt: bookingStatus === "CONFIRMED" ? new Date() : null,
+            confirmedAt: bookingStatus === "CONFIRMED" ? new Date() : null,
           },
         ],
         {
@@ -79,7 +91,7 @@ const createBooking = async ({ rideId, passengerId, seats }) => {
 
       booking = createdBooking;
 
-      const seatDocument = seats.map((seatNumber) => ({
+      const seatDocuments = seats.map((seatNumber) => ({
         bookingId: booking._id,
         rideId,
         seatNumber,
@@ -89,22 +101,37 @@ const createBooking = async ({ rideId, passengerId, seats }) => {
           bookingStatus === "CONFIRMED"
             ? null
             : new Date(Date.now() + 10 * 60 * 1000),
-        confimedAt: bookingStatus === "CONFIRMED" ? new Date() : null,
+        confirmedAt: bookingStatus === "CONFIRMED" ? new Date() : null,
       }));
 
-      await BookingSeat.insertMany(seatDocument, {
+      await BookingSeat.insertMany(seatDocuments, {
         session,
       });
+
       ride.availableSeats -= numberOfSeats;
+
       if (ride.availableSeats === 0) {
         ride.status = "FULL";
       } else if (ride.status === "FULL") {
         ride.status = "PUBLISHED";
       }
+
       await ride.save({
         session,
       });
+
+      remainingAvailableSeats = ride.availableSeats;
     });
+
+    if (booking.status === "CONFIRMED") {
+      const io = getIO();
+
+      io.to(`ride:${rideId}`).emit("ride:seat-booked", {
+        rideId: rideId.toString(),
+        seatNumbers: seats,
+        availableSeats: remainingAvailableSeats,
+      });
+    }
 
     return {
       success: true,
