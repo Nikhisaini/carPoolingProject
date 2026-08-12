@@ -127,7 +127,7 @@ function Register() {
   };
 
   return (
-    <div className="flex h-full min-h-0 flex-1 items-center justify-center bg-muted/30 px-4 py-6">
+    <div className="flex h-full min-h-0 pt-20 flex-1 items-center justify-center bg-muted/30 px-4 py-6">
       <div className="w-full max-w-md rounded-2xl border border-border bg-background p-8 shadow-lg">
         <div className="mb-8 flex items-center justify-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600">

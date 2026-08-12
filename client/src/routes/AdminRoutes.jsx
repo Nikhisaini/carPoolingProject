@@ -1,8 +1,8 @@
 import Adminlayout from "@/layouts/Adminlayout";
-import Dashboard from "@/pages/admin/Dashboard";
-import LicenceVerification from "@/pages/admin/LicenceVerification";
-import UserManagement from "@/pages/admin/UserManagement";
-import VehicleVerification from "@/pages/admin/VehicleVerification";
+import Dashboard from "@/pages/Admin/Dashboard";
+import LicenceVerification from "@/pages/Admin/LicenceVerification";
+import UserManagement from "@/pages/Admin/UserManagement";
+import VehicleVerification from "@/pages/Admin/VehicleVerification";
 import React from "react";
 import { Route, Routes } from "react-router-dom";
 

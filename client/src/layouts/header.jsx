@@ -30,16 +30,13 @@ function Header() {
         setProfile(null);
         return;
       }
-
       if (user?.profileImage) {
         setProfile(user);
         return;
       }
-
       try {
         const response = await api.get("/profile");
         const profileData = response.data?.data || response.data?.user;
-
         if (profileData) {
           setProfile(profileData);
         }

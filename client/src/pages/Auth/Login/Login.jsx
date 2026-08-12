@@ -147,9 +147,8 @@ function Login() {
   };
 
   return (
-    <div className="h-screen overflow-hidden bg-muted/30">
-      <div className="mx-auto flex h-full w-full max-w-md flex-col justify-center px-6">
-        {/* Card wrapper */}
+    <div className="flex h-full min-h-0 flex-1 pt-30 items-center justify-center bg-muted/30 px-4 py-6">
+      <div className="mx-auto flex h-full w-full max-w-md flex-col justify-center px-8">
         <div className="rounded-2xl border border-border bg-background p-8 shadow-lg">
           <div className="mb-8 flex justify-center">
             <div className="flex items-center gap-2">

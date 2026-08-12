@@ -19,18 +19,14 @@ import { Card, CardContent } from "@/components/ui/card";
 function RideResults() {
   const location = useLocation();
   const navigate = useNavigate();
-
   const { departureLocation, destinationLocation, travelDate, seats } =
     location.state || {};
-
   const from = departureLocation?.city;
   const to = destinationLocation?.city;
   const date = travelDate;
-
   const [rides, setRides] = useState([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
-
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 10,
@@ -49,7 +45,6 @@ function RideResults() {
     try {
       setLoading(true);
       setErrorMessage("");
-
       const res = await api.get("/ride/search", {
         params: {
           from,
@@ -60,11 +55,8 @@ function RideResults() {
           limit: 10,
         },
       });
-
       const result = res.data?.data;
-
       setRides(result?.rides || []);
-
       setPagination(
         result?.pagination || {
           page,
@@ -76,13 +68,11 @@ function RideResults() {
       );
     } catch (error) {
       console.error("Search Rides Error:", error);
-
       setErrorMessage(
         error.response?.data?.message ||
           error.message ||
           "Unable to load rides.",
       );
-
       setRides([]);
     } finally {
       setLoading(false);
@@ -93,7 +83,6 @@ function RideResults() {
     if (!from || !to || !date || !seats) {
       return;
     }
-
     getRides(1);
   }, [from, to, date, seats]);
 
@@ -101,7 +90,6 @@ function RideResults() {
     if (pagination.page <= 1) {
       return;
     }
-
     getRides(pagination.page - 1);
   };
 
@@ -109,7 +97,6 @@ function RideResults() {
     if (!pagination.hasNextPage) {
       return;
     }
-
     getRides(pagination.page + 1);
   };
 
@@ -131,11 +118,9 @@ function RideResults() {
     <div className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="mb-7">
         <p className="text-sm font-medium text-blue-600">Search results</p>
-
         <h1 className="mt-1 text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
           Available rides
         </h1>
-
         <p className="mt-1 text-sm text-gray-500">
           Choose a ride that works best for you.
         </p>
@@ -146,30 +131,23 @@ function RideResults() {
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             <div className="flex items-center gap-2">
               <MapPin className="h-4 w-4 text-blue-600" />
-
               <span className="text-sm font-semibold text-gray-900">
                 {from}
               </span>
             </div>
-
             <ArrowRight className="h-4 w-4 text-gray-400" />
-
             <div className="flex items-center gap-2">
               <MapPin className="h-4 w-4 text-blue-600" />
-
               <span className="text-sm font-semibold text-gray-900">{to}</span>
             </div>
 
             <div className="hidden h-5 w-px bg-gray-200 sm:block" />
-
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <CalendarDays className="h-4 w-4" />
-
               {format(formattedSearchDate, "EEE, MMM d, yyyy")}
             </div>
 
             <div className="hidden h-5 w-px bg-gray-200 sm:block" />
-
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <Users className="h-4 w-4" />
               {seats} {Number(seats) === 1 ? "seat" : "seats"}
@@ -182,7 +160,6 @@ function RideResults() {
         <div className="flex min-h-64 items-center justify-center rounded-xl border border-gray-200 bg-white">
           <div className="flex flex-col items-center gap-3">
             <Loader2 className="h-7 w-7 animate-spin text-blue-600" />
-
             <p className="text-sm text-gray-500">
               Searching for available rides...
             </p>
@@ -193,9 +170,7 @@ function RideResults() {
       {!loading && errorMessage && (
         <div className="rounded-xl border border-red-200 bg-red-50 p-6">
           <h3 className="font-semibold text-red-800">Unable to load rides</h3>
-
           <p className="mt-1 text-sm text-red-600">{errorMessage}</p>
-
           <Button
             type="button"
             onClick={() => getRides(pagination.page)}
@@ -210,11 +185,9 @@ function RideResults() {
         <Card className="border-gray-200 shadow-sm">
           <CardContent className="flex min-h-64 flex-col items-center justify-center p-8 text-center">
             <Car className="h-12 w-12 text-gray-400" />
-
             <h2 className="mt-4 text-xl font-semibold text-gray-900">
               No rides found
             </h2>
-
             <p className="mt-2 max-w-md text-sm text-gray-500">
               We couldn't find any rides matching your search. Try another date,
               route, or number of seats.
@@ -268,7 +241,6 @@ function RideResults() {
                           <p className="truncate text-base font-semibold text-gray-900">
                             {departure?.city}
                           </p>
-
                           <p className="mt-0.5 truncate text-xs text-gray-500">
                             {departure?.placeName || departure?.address}
                           </p>
@@ -276,9 +248,7 @@ function RideResults() {
 
                         <div className="flex shrink-0 items-center gap-1">
                           <div className="h-px w-8 bg-gray-300" />
-
                           <ArrowRight className="h-4 w-4 text-gray-400" />
-
                           <div className="h-px w-8 bg-gray-300" />
                         </div>
 
@@ -286,23 +256,20 @@ function RideResults() {
                           <p className="truncate text-base font-semibold text-gray-900">
                             {destination?.city}
                           </p>
-
                           <p className="mt-0.5 truncate text-xs text-gray-500">
                             {destination?.placeName || destination?.address}
                           </p>
                         </div>
                       </div>
 
-                      <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2">
+                      {/* <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2">
                         <div className="flex items-center gap-1.5 text-sm text-gray-600">
                           <CalendarDays className="h-4 w-4 text-gray-400" />
-
                           {format(departureDate, "EEE, MMM d")}
                         </div>
 
                         <div className="flex items-center gap-1.5 text-sm font-medium text-gray-900">
                           <Clock className="h-4 w-4 text-gray-400" />
-
                           {format(departureDate, "hh:mm a")}
                         </div>
 
@@ -310,7 +277,7 @@ function RideResults() {
                           <Users className="h-4 w-4 text-gray-400" />
                           {ride.availableSeats} seats available
                         </div>
-                      </div>
+                      </div> */}
                     </div>
 
                     <div className="hidden h-16 w-px bg-gray-200 lg:block" />
@@ -344,17 +311,14 @@ function RideResults() {
                     </div>
 
                     <div className="hidden h-16 w-px bg-gray-200 lg:block" />
-
                     <div className="flex items-center justify-between gap-4 lg:min-w-32 lg:flex-col lg:items-end lg:gap-2">
                       <div>
                         <div className="flex items-center gap-0.5">
                           <IndianRupee className="h-4 w-4 text-gray-900" />
-
-                          <span className="text-xl font-bold text-gray-900">
+                          <span className="text-3xl font-bold text-gray-900">
                             {ride.pricePerSeat}
                           </span>
                         </div>
-
                         <p className="text-right text-xs text-gray-500">
                           per seat
                         </p>

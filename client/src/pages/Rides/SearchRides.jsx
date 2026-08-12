@@ -69,7 +69,7 @@ function SearchRides() {
     if (!validateSearch()) {
       return;
     }
-    navigate("ride/results", {
+    navigate("/ride/results", {
       state: {
         departureLocation,
         destinationLocation,

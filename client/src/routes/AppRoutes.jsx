@@ -1,31 +1,32 @@
 import { Route, Routes } from "react-router-dom";
-import Register from "../pages/auth/Register/Register";
-import VerifyOtp from "../pages/auth/VerifyOtp/VerifyOtp";
+import Register from "../pages/Auth/Register/Register";
+import VerifyOtp from "../pages/Auth/VerifyOtp/VerifyOtp";
 import Layout from "../layouts/layout";
-import Login from "../pages/auth/Login/Login";
-import Profile from "../pages/user/Profile/Profile";
-import CompleteProfile from "../pages/user/Profile/completeProfile";
-import EditProfile from "../pages/user/Profile/EditProfile";
-import AddLicence from "../pages/user/Licence/AddLicence";
-import MyVehicle from "@/pages/user/Vehicle/MyVehicle";
-import VehicleDetail from "@/pages/user/Vehicle/VehicleDetail";
-import EditVehicle from "@/pages/user/Vehicle/EditVehicle";
+import Login from "../pages/Auth/Login/Login";
+import Profile from "../pages/User/Profile/Profile";
+import CompleteProfile from "../pages/User/Profile/completeProfile";
+import EditProfile from "../pages/User/Profile/EditProfile";
+import AddLicence from "../pages/User/Licence/AddLicence";
+import MyVehicle from "@/pages/User/Vehicle/MyVehicle";
+import VehicleDetail from "@/pages/User/Vehicle/VehicleDetail";
+import EditVehicle from "@/pages/User/Vehicle/EditVehicle";
 import AdminRoutes from "./AdminRoutes";
 import ProtectedRoute from "./ProtectedRoute";
-import PublishRide from "@/pages/user/Publishride/PublishRide";
-import PublishRideDateTime from "@/pages/user/Publishride/PublishRideDateTime";
-import PublishRideVehicle from "@/pages/user/Publishride/PublishRideVehicle";
-import PublishRideSeats from "@/pages/user/Publishride/PublishRideSeats";
-import PublishRidePreferences from "@/pages/user/Publishride/PublishRidePreferences";
-import PublishRidePrice from "@/pages/user/Publishride/PublishRidePrice";
-import PublishRideReview from "@/pages/user/Publishride/PublishRideReview";
-import AddVehicle from "@/pages/user/Vehicle/AddVehicle";
-import MyRides from "@/pages/user/MyRides/MyRides";
-import SearchRides from "@/pages/searchRides/SearchRides";
-import Home from "@/pages/home/Home";
-import Unauthorized from "@/pages/unauthorized/Unauthorized";
-import RideResults from "@/pages/searchRides/RideResults";
-import MyLicence from "@/pages/user/Licence/MyLicence";
+import PublishRide from "@/pages/User/Publishride/PublishRide";
+import PublishRideDateTime from "@/pages/User/Publishride/PublishRideDateTime";
+import PublishRideVehicle from "@/pages/User/Publishride/PublishRideVehicle";
+import PublishRideSeats from "@/pages/User/Publishride/PublishRideSeats";
+import PublishRidePreferences from "@/pages/User/Publishride/PublishRidePreferences";
+import PublishRidePrice from "@/pages/User/Publishride/PublishRidePrice";
+import PublishRideReview from "@/pages/User/Publishride/PublishRideReview";
+import AddVehicle from "@/pages/User/Vehicle/AddVehicle";
+import MyRides from "@/pages/User/MyRides/MyRides";
+import SearchRides from "@/pages/Rides/SearchRides";
+import Home from "@/pages/Home/Home";
+import Unauthorized from "@/pages/Unauthorized/Unauthorized";
+import RideResults from "@/pages/Rides/RideResults";
+import MyLicence from "@/pages/User/Licence/MyLicence";
+import RideDetail from "@/pages/Rides/RideDetail";
 
 function AppRoutes() {
   return (
@@ -37,7 +38,7 @@ function AppRoutes() {
         <Route path="/login" element={<Login />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
         <Route path="/search" element={<SearchRides />} />
-        <Route path="search/ride/results" element={<RideResults />} />
+        <Route path="/ride/results" element={<RideResults />} />
         <Route element={<ProtectedRoute allowedRoles={["User"]} />}>
           <Route path="/profile" element={<Profile />} />
           <Route path="/complete-profile" element={<CompleteProfile />} />
@@ -65,6 +66,7 @@ function AppRoutes() {
           <Route path="/publish-ride/price" element={<PublishRidePrice />} />
           <Route path="/publish-ride/review" element={<PublishRideReview />} />
           <Route path="/my-rides" element={<MyRides />} />
+          <Route path="/ride/:rideId" element={<RideDetail />} />
         </Route>
       </Route>
 
