@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import api from "@/services/Api";
+import socket from "@/services/socket";
 import { format } from "date-fns";
 import {
   ArrowLeft,
@@ -16,19 +17,154 @@ import {
   Users,
 } from "lucide-react";
 import React, { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 function RideDetail() {
   const { rideId } = useParams();
+  const location = useLocation();
+  const { requestedSeats = 1 } = location.state || {};
   const navigate = useNavigate();
-
   const [ride, setRide] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [occupiedSeats, setOccupiedSeats] = useState([]);
+  const [selectedSeats, setSelectedSeats] = useState([]);
+  const [seatLoading, setSeatLoading] = useState(true);
+  const [bookingLoading, setBookingLoading] = useState(false);
+  const [bookingMessage, setBookingMessage] = useState("");
+  const [bookingError, setBookingError] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
     getRideDetail();
   }, [rideId]);
+
+  useEffect(() => {
+    if (!rideId) {
+      return;
+    }
+    getRideSeats();
+  }, [rideId]);
+
+  useEffect(() => {
+    if (!rideId) {
+      return;
+    }
+
+    socket.connect();
+
+    const handleConnect = () => {
+      console.log("Socket connected:", socket.id);
+
+      socket.emit("ride:join", rideId);
+    };
+
+    socket.on("connect", handleConnect);
+
+    return () => {
+      socket.emit("ride:leave", rideId);
+      socket.off("connect", handleConnect);
+      socket.disconnect();
+    };
+  }, [rideId]);
+
+  useEffect(() => {
+    const handleSeatBooked = (data) => {
+      if (data.rideId !== rideId) {
+        return;
+      }
+
+      const newlyBookedSeats = data.seatNumbers || [];
+
+      setOccupiedSeats((currentSeats) => {
+        return Array.from(new Set([...currentSeats, ...newlyBookedSeats]));
+      });
+
+      setSelectedSeats((currentSeats) => {
+        return currentSeats.filter((seat) => !newlyBookedSeats.includes(seat));
+      });
+
+      setRide((currentRide) => {
+        if (!currentRide) {
+          return currentRide;
+        }
+
+        return {
+          ...currentRide,
+          availableSeats: data.availableSeats,
+        };
+      });
+    };
+
+    socket.on("ride:seat-booked", handleSeatBooked);
+
+    return () => {
+      socket.off("ride:seat-booked", handleSeatBooked);
+    };
+  }, [rideId]);
+
+  const handleSeatSelect = (seatNumber) => {
+    if (occupiedSeats.includes(seatNumber)) {
+      return;
+    }
+
+    setBookingError("");
+    setBookingMessage("");
+
+    setSelectedSeats((currentSeats) => {
+      if (currentSeats.includes(seatNumber)) {
+        return currentSeats.filter((seat) => seat !== seatNumber);
+      }
+
+      if (currentSeats.length >= requestedSeats) {
+        setBookingError(
+          `You can select a maximum of ${requestedSeats} ${
+            requestedSeats === 1 ? "seat" : "seats"
+          } for this search.`,
+        );
+
+        return currentSeats;
+      }
+
+      return [...currentSeats, seatNumber].sort((a, b) => a - b);
+    });
+  };
+
+  const getRideSeats = async () => {
+    try {
+      setSeatLoading(true);
+      setBookingError("");
+
+      const res = await api.get(`/booking/ride/${rideId}/seats`);
+
+      if (!res.data?.success) {
+        throw new Error(
+          res.data?.message || "unable to load seat availability",
+        );
+      }
+
+      setOccupiedSeats(res.data.occupiedSeats || []);
+
+      setRide((currentRide) => {
+        if (!currentRide) {
+          return currentRide;
+        }
+        return {
+          ...currentRide,
+          availableSeats: res.data.availableSeats,
+        };
+      });
+    } catch (error) {
+      console.error("Get Ride Seats Error:", error);
+
+      setBookingError(
+        error.response?.data?.message ||
+          error.message ||
+          "Unable to load seat availability.",
+      );
+    } finally {
+      setSeatLoading(false);
+    }
+  };
 
   const getRideDetail = async () => {
     try {
@@ -59,8 +195,52 @@ function RideDetail() {
     navigate(-1);
   };
 
-  const handleBookRide = () => {
-    navigate(`/ride/${rideId}/book`);
+  const handleBookRide = async () => {
+    if (selectedSeats.length === 0) {
+      setBookingError("Please select at least one seat.");
+      return;
+    }
+
+    try {
+      setBookingLoading(true);
+      setBookingError("");
+      setBookingMessage("");
+
+      const res = await api.post("/booking/book", {
+        rideId,
+        seats: selectedSeats,
+      });
+
+      if (!res.data?.success) {
+        throw new Error(res.data?.message || "Unable to book ride.");
+      }
+
+      const booking = res.data.booking;
+
+      setBookingMessage(
+        booking?.status === "CONFIRMED"
+          ? "Ride booked successfully."
+          : "Booking request submitted successfully.",
+      );
+
+      setSelectedSeats([]);
+    } catch (error) {
+      console.error("Book Ride Error:", error);
+
+      setBookingError(
+        error.response?.data?.message ||
+          error.message ||
+          "Unable to book ride.",
+      );
+
+      /*
+       * Refresh seat state because another user may
+       * have taken one of the selected seats.
+       */
+      await getRideSeats();
+    } finally {
+      setBookingLoading(false);
+    }
   };
 
   if (loading) {
@@ -137,6 +317,9 @@ function RideDetail() {
   const bookingMode =
     ride.bookingMode === "AUTO" ? "Instant confirmation" : "Driver approval";
 
+  const selectedSeatCount = selectedSeats.length;
+
+  const totalBookingAmount = selectedSeatCount * ride.pricePerSeat;
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
@@ -323,49 +506,187 @@ function RideDetail() {
                 <div className="flex items-center justify-between border-b border-gray-100 pb-5">
                   <div className="flex items-center gap-3">
                     <Users className="h-5 w-5 text-blue-600" />
+
                     <span className="text-sm text-gray-600">
-                      Seats available
+                      Passenger seats
                     </span>
                   </div>
+
                   <span className="text-sm font-semibold text-gray-900">
                     {ride.availableSeats}
                   </span>
                 </div>
 
-                <div className="flex items-center justify-between border-b border-gray-100 py-5">
-                  <div className="flex items-center gap-3">
-                    <CheckCircle2 className="h-5 w-5 text-green-600" />
-                    <span className="text-sm text-gray-600">Booking</span>
-                  </div>
-                  <span className="text-sm font-medium text-gray-900">
-                    {bookingMode}
-                  </span>
-                </div>
-
                 <div className="pt-5">
-                  <p className="text-sm text-gray-500">Price per passenger</p>
-                  <div className="mt-1 flex items-center">
-                    <IndianRupee className="h-6 w-6 text-gray-900" />
-                    <span className="text-3xl font-bold tracking-tight text-gray-900">
-                      {ride.pricePerSeat}
-                    </span>
+                  <p className="text-sm font-semibold text-gray-900">
+                    Select your seats
+                  </p>
+
+                  <p className="mt-1 text-xs text-gray-500">
+                    Driver seat is locked. Select available passenger seats.
+                  </p>
+
+                  {seatLoading ? (
+                    <div className="flex min-h-64 items-center justify-center">
+                      <div className="flex flex-col items-center gap-3">
+                        <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+
+                        <p className="text-xs text-gray-500">
+                          Loading seats...
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mt-5">
+                      {/* Car */}
+                      <div className="mx-auto w-full max-w-[250px] rounded-[55px] border-2 border-gray-200 bg-gray-50 px-5 pb-6 pt-8">
+                        {/* Front / windshield */}
+                        <div className="mx-auto mb-6 h-12 w-28 rounded-[30px] border border-gray-200 bg-white" />
+
+                        {/* Driver row */}
+                        <div className="mb-4 grid grid-cols-2 gap-4">
+                          <button
+                            type="button"
+                            disabled
+                            className="flex h-16 flex-col items-center justify-center rounded-xl border-2 border-gray-200 bg-gray-100 text-gray-400"
+                          >
+                            <span className="text-xl">🔒</span>
+
+                            <span className="mt-1 text-[10px] font-semibold uppercase tracking-wide">
+                              Driver
+                            </span>
+                          </button>
+
+                          <div />
+                        </div>
+
+                        {/* Passenger seats */}
+                        <div className="grid grid-cols-2 gap-4">
+                          {Array.from(
+                            { length: ride.totalSeats },
+                            (_, index) => index + 1,
+                          ).map((seatNumber) => {
+                            const isOccupied =
+                              occupiedSeats.includes(seatNumber);
+
+                            const isSelected =
+                              selectedSeats.includes(seatNumber);
+
+                            return (
+                              <button
+                                key={seatNumber}
+                                type="button"
+                                disabled={isOccupied || bookingLoading}
+                                onClick={() => handleSeatSelect(seatNumber)}
+                                className={[
+                                  "flex h-16 flex-col items-center justify-center rounded-xl border-2 transition",
+                                  isOccupied
+                                    ? "cursor-not-allowed border-gray-300 bg-gray-200 text-gray-400"
+                                    : isSelected
+                                      ? "border-blue-600 bg-blue-600 text-white shadow-sm"
+                                      : "border-gray-200 bg-white text-gray-700 hover:border-blue-400 hover:bg-blue-50",
+                                ].join(" ")}
+                              >
+                                <span className="text-lg">
+                                  {isOccupied ? "✕" : isSelected ? "✓" : "💺"}
+                                </span>
+
+                                <span className="mt-1 text-[11px] font-semibold">
+                                  Seat {seatNumber}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Legend */}
+                      <div className="mt-5 flex flex-wrap justify-center gap-4 text-[11px] text-gray-500">
+                        <div className="flex items-center gap-2">
+                          <span className="h-3 w-3 rounded bg-white ring-1 ring-gray-300" />
+                          Available
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <span className="h-3 w-3 rounded bg-blue-600" />
+                          Selected
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <span className="h-3 w-3 rounded bg-gray-300" />
+                          Booked
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Booking summary */}
+                  <div className="mt-6 rounded-xl bg-gray-50 p-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-500">
+                        Selected seats
+                      </span>
+
+                      <span className="text-sm font-semibold text-gray-900">
+                        {selectedSeatCount}
+                      </span>
+                    </div>
+
+                    {selectedSeatCount > 0 && (
+                      <div className="mt-2 flex items-center justify-between">
+                        <span className="text-sm text-gray-500">Seats</span>
+
+                        <span className="text-sm font-medium text-gray-900">
+                          {selectedSeats.join(", ")}
+                        </span>
+                      </div>
+                    )}
+
+                    <div className="mt-4 border-t border-gray-200 pt-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-500">
+                          {ride.pricePerSeat} × {selectedSeatCount}
+                        </span>
+
+                        <span className="text-xl font-bold text-gray-900">
+                          ₹{totalBookingAmount.toLocaleString("en-IN")}
+                        </span>
+                      </div>
+                    </div>
                   </div>
+
+                  {bookingError && (
+                    <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">
+                      {bookingError}
+                    </div>
+                  )}
+
+                  {bookingMessage && (
+                    <div className="mt-4 rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-700">
+                      {bookingMessage}
+                    </div>
+                  )}
 
                   <Button
                     type="button"
-                    disabled={!canBook}
+                    disabled={
+                      !canBook ||
+                      seatLoading ||
+                      bookingLoading ||
+                      selectedSeatCount === 0
+                    }
                     onClick={handleBookRide}
                     className="mt-5 h-12 w-full rounded-xl text-base font-semibold"
                   >
-                    {ride.status !== "PUBLISHED"
-                      ? "Ride unavailable"
-                      : ride.availableSeats <= 0
-                        ? "Ride is full"
-                        : departureDate <= new Date()
-                          ? "Ride has started"
-                          : "Book Now"}
+                    {bookingLoading
+                      ? "Booking..."
+                      : selectedSeatCount === 0
+                        ? "Select a seat"
+                        : "Book Now"}
 
-                    {canBook && <ArrowRight className="ml-2 h-4 w-4" />}
+                    {!bookingLoading && selectedSeatCount > 0 && (
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    )}
                   </Button>
 
                   <div className="mt-4 flex items-center justify-center gap-2 text-xs text-gray-500">

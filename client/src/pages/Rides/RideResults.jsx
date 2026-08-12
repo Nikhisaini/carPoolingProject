@@ -85,25 +85,25 @@ function RideResults() {
     }
     getRides(1);
   }, [from, to, date, seats]);
-
   const handlePreviousPage = () => {
     if (pagination.page <= 1) {
       return;
     }
     getRides(pagination.page - 1);
   };
-
   const handleNextPage = () => {
     if (!pagination.hasNextPage) {
       return;
     }
     getRides(pagination.page + 1);
   };
-
   const handleViewRide = (rideId) => {
-    navigate(`/ride/${rideId}`);
+    navigate(`/ride/${rideId}`, {
+      state: {
+        requestedSeats: Number(seats),
+      },
+    });
   };
-
   const handleBackToSearch = () => {
     navigate("/search");
   };
