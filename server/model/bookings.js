@@ -4,20 +4,17 @@ const bookingSchema = new mongoose.Schema(
   {
     rideId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Rides",
+      ref: "Ride",
       required: true,
+      index: true,
     },
     passengerId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
+      index: true,
     },
-    driverId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-    },
-    seatsBooked: {
+    numberOfSeats: {
       type: Number,
       required: true,
       min: 1,
@@ -25,27 +22,66 @@ const bookingSchema = new mongoose.Schema(
     pricePerSeat: {
       type: Number,
       required: true,
+      min: 0,
+    },
+    subtotal: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+    discountAmount: {
+      type: Number,
+      default: 0,
+      min: 0,
     },
     totalAmount: {
       type: Number,
-      reuired: true,
+      required: true,
+      min: 0,
     },
-    bookingStatus: {
+    status: {
       type: String,
-      enum: ["Pending", "Confirmed", "Cancelled", "Completed"],
-      default: "Pending",
-    },
-    paymentStatus: {
-      type: String,
-      enum: ["Pending", "Paid", "Refunded", "Failed"],
-      default: "Pending",
+      enum: ["PENDING", "CONFIRMED", "REJECTED", "CANCELLED", "COMPLETED"],
+      default: "PENDING",
+      index: true,
     },
     bookedAt: {
       type: Date,
       default: Date.now,
     },
+    confirmedAt: {
+      type: Date,
+      default: null,
+    },
+    rejectedAt: {
+      type: Date,
+      default: null,
+    },
+    cancelledAt: {
+      type: Date,
+      default: null,
+    },
+    completedAt: {
+      type: Date,
+      default: null,
+    },
+    cancellationReason: {
+      type: String,
+      trim: true,
+      maxlength: 500,
+      default: "",
+    },
   },
-  { timestamps: true },
+  {
+    timestamps: true,
+    versionKey: false,
+  },
 );
-const Bookings = mongoose.model("Bookings", bookingSchema);
-export default Bookings;
+
+bookingSchema.index({
+  rideId: 1,
+  passengerId: 1,
+});
+
+const Booking = mongoose.model("Booking", bookingSchema);
+export default Booking;

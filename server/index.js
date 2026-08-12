@@ -12,6 +12,7 @@ import fuelTypesRoutes from "./routes/fuelTypesRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import rideRouter from "./routes/rideRoutes.js";
 import startLicenceVerificationCron from "./cron/licenceVerificationCron.js";
+import bookingRoutes from "./routes/bookingRoutes.js";
 await connectDb();
 startLicenceVerificationCron();
 const app = express();
@@ -31,6 +32,7 @@ app.use("/api/licence-category", licenceCategoryRoutes);
 app.use("/api/fuel-type", fuelTypesRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/ride", rideRouter);
+app.use("/api/booking", bookingRoutes);
 
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 const PORT = process.env.PORT || 8081;
