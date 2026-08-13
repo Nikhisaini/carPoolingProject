@@ -70,6 +70,10 @@ const userSchema = new mongoose.Schema(
       min: 0,
       max: 5,
     },
+    ratingCount: {
+      type: Number,
+      default: 0,
+    },
     totalTrips: {
       type: Number,
       default: 0,

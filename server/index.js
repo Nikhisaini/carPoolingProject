@@ -12,6 +12,8 @@ import licenceCategoryRoutes from "./routes/licenceCategoryRoutes.js";
 import fuelTypesRoutes from "./routes/fuelTypesRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import rideRouter from "./routes/rideRoutes.js";
+import reviewRoutes from "./routes/reviewRoutes.js";
+
 import startLicenceVerificationCron from "./cron/licenceVerificationCron.js";
 import bookingRoutes from "./routes/bookingRoutes.js";
 import { initializeSocket } from "./socket/socketServer.js";
@@ -37,6 +39,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/ride", rideRouter);
 app.use("/api/booking", bookingRoutes);
 app.use("/api/payment", paymentRoutes);
+app.use("/api/review", reviewRoutes);
 
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 

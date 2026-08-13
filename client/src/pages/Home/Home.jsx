@@ -75,7 +75,7 @@ function Home() {
 
   const handleSearch = () => {
     setErrorMessage("");
-    if (!validateSearch) {
+    if (!validateSearch()) {
       return;
     }
     navigate("/ride/results", {
@@ -127,9 +127,9 @@ function Home() {
               </div>
             )}
 
-            <Card className="overflow-visible rounded-[24px] border-2 border-[#2878ff] bg-white shadow-[0_6px_20px_rgba(37,99,235,0.12)]">
+            <Card className="overflow-visible rounded-[24px] border-2 border-[#2878ff] bg-white py-0 shadow-[0_6px_20px_rgba(37,99,235,0.12)]">
               <CardContent className="p-0">
-                <div className="flex min-h-[72px] flex-col lg:flex-row lg:items-stretch">
+                <div className="flex min-h-[72px] flex-col lg:h-[80px] lg:flex-row lg:items-stretch">
                   <div className="min-w-0 flex-1 border-b border-gray-200 px-4 py-3 lg:border-b-0 lg:border-r">
                     <label className="block text-xs font-semibold leading-4 text-gray-500">
                       From
@@ -232,11 +232,11 @@ function Home() {
                     )}
                   </div>
 
-                  <div className="flex items-center px-0 lg:w-[190px] lg:shrink-0">
+                  <div className="flex self-stretch lg:w-[190px] lg:shrink-0">
                     <Button
                       type="button"
                       onClick={handleSearch}
-                      className="h-[78px] w-full rounded-none rounded-r-[18px] bg-[#2161f5] px-8 text-[16px] font-semibold text-white shadow-none transition-colors hover:bg-[#185bea] lg:rounded-r-[18px]"
+                      className="h-full w-full rounded-none rounded-r-[22px] bg-[#2161f5] px-8 text-[16px] font-semibold text-white shadow-none hover:bg-[#185bea]"
                     >
                       Search
                     </Button>

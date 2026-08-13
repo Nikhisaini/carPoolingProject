@@ -28,12 +28,20 @@ const createBooking = async ({ rideId, passengerId, seats }) => {
         throw new Error("You cannot book your own ride");
       }
 
-      if (!ride) {
-        throw new Error("Ride is not available for booking");
-      }
-
       if (ride.departureAt <= new Date()) {
         throw new Error("This ride has already departed");
+      }
+
+      const existingBooking = await Booking.findOne({
+        rideId,
+        passengerId,
+        status: {
+          $in: ["PENDING", "CONFIRMED", "COMPLETED"],
+        },
+      }).session(session);
+
+      if (existingBooking) {
+        throw new Error("You have already booked this ride");
       }
 
       const numberOfSeats = seats.length;

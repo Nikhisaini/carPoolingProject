@@ -134,6 +134,7 @@ const getPublishRideEligibility = async (req, res) => {
     });
   }
 };
+
 const publishRide = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -693,6 +694,109 @@ const searchRides = async (req, res) => {
   }
 };
 
+const cancelRide = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { rideId } = req.params;
+    const { cancellationReason = "" } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(rideId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid ride ID",
+      });
+    }
+
+    const ride = await Ride.findOne({
+      _id: rideId,
+      ownerId: userId,
+    });
+
+    if (!ride) {
+      return res.status(404).json({
+        success: false,
+        message: "Ride not found",
+      });
+    }
+
+    if (["STARTED", "COMPLETED", "CANCELLED"].includes(ride.status)) {
+      return res.status(409).json({
+        success: false,
+        message: `Ride cannot be cancelled because it is already ${ride.status.toLowerCase()}`,
+      });
+    }
+
+    if (ride.departureAt <= new Date()) {
+      return res.status(409).json({
+        success: false,
+        message: "Ride cannot be cancelled after departure time",
+      });
+    }
+
+    const session = await mongoose.startSession();
+
+    try {
+      await session.withTransaction(async () => {
+        ride.status = "CANCELLED";
+        ride.cancelledAt = new Date();
+
+        await ride.save({ session });
+
+        const bookings = await Booking.find({
+          rideId: ride._id,
+          status: {
+            $in: ["PENDING", "CONFIRMED"],
+          },
+        }).session(session);
+
+        for (const booking of bookings) {
+          booking.status = "CANCELLED";
+          booking.cancelledAt = new Date();
+          booking.cancellationReason =
+            cancellationReason.trim() || "Ride cancelled by driver";
+
+          if (booking.paymentStatus === "PAID") {
+            booking.paymentStatus = "REFUNDED";
+          }
+
+          await booking.save({ session });
+        }
+
+        await BookingSeat.updateMany(
+          {
+            rideId: ride._id,
+            status: {
+              $in: ["HELD", "CONFIRMED"],
+            },
+          },
+          {
+            $set: {
+              status: "CANCELLED",
+              cancelledAt: new Date(),
+            },
+          },
+          { session },
+        );
+      });
+    } finally {
+      await session.endSession();
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Ride cancelled successfully",
+      rideId: ride._id,
+    });
+  } catch (error) {
+    console.error("Cancel Ride Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
 export {
   publishRide,
   getRideById,
@@ -700,4 +804,5 @@ export {
   searchRides,
   getPublishRideEligibility,
   getMyRides,
+  cancelRide,
 };

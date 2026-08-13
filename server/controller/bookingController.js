@@ -51,6 +51,7 @@ const bookRide = async (req, res) => {
       "You cannot book your own ride",
       "This ride has already departed",
       "Only",
+      "You have already booked this ride",
       "Seat number must be between",
       "are no longer available",
     ];
