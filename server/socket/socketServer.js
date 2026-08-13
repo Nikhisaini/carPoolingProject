@@ -11,7 +11,7 @@ const initializeSocket = (httpServer) => {
   });
 
   io.on("connection", (socket) => {
-    console.log("Socket connected:", socket.id);
+    // console.log("Socket connected:", socket.id);
 
     socket.on("ride:join", (rideId) => {
       if (!rideId) {
@@ -19,7 +19,7 @@ const initializeSocket = (httpServer) => {
       }
       const roomName = `ride:${rideId}`;
       socket.join(roomName);
-      console.log(`Socket ${socket.id} joined room ${roomName}`);
+      // console.log(`Socket ${socket.id} joined room ${roomName}`);
     });
 
     socket.on("ride:leave", (rideId) => {
@@ -29,10 +29,10 @@ const initializeSocket = (httpServer) => {
 
       const roomName = `ride:${rideId}`;
       socket.leave(roomName);
-      console.log(`Socket ${socket.id} left room ${roomName}`);
+      // console.log(`Socket ${socket.id} left room ${roomName}`);
     });
     socket.on("disconnect", () => {
-      console.log("Socket disconnected:", socket.id);
+      // console.log("Socket disconnected:", socket.id);
     });
   });
   return io;

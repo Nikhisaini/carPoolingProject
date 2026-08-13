@@ -33,7 +33,7 @@ function MyRides() {
       const res = await api.get("ride/my-rides");
       setRides(res.data.rides);
     } catch (error) {
-      console.log("Get my ride Error:", error);
+      console.error("Get my ride Error:", error);
     } finally {
       setLoading(false);
     }

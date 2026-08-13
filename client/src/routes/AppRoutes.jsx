@@ -27,6 +27,7 @@ import Unauthorized from "@/pages/Unauthorized/Unauthorized";
 import RideResults from "@/pages/Rides/RideResults";
 import MyLicence from "@/pages/User/Licence/MyLicence";
 import RideDetail from "@/pages/Rides/RideDetail";
+import MyBookings from "@/pages/User/MyBookings/MyBookings";
 
 function AppRoutes() {
   return (
@@ -67,6 +68,7 @@ function AppRoutes() {
           <Route path="/publish-ride/review" element={<PublishRideReview />} />
           <Route path="/my-rides" element={<MyRides />} />
           <Route path="/ride/:rideId" element={<RideDetail />} />
+          <Route path="/my-bookings" element={<MyBookings />} />
         </Route>
       </Route>
 

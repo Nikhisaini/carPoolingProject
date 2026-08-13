@@ -7,6 +7,8 @@ import { searchRides as searchRidesService } from "../services/rideService.js";
 import RideLocation from "../model/rideLocation.js";
 import Licence from "../model/licence.js";
 import Vehicle from "../model/vehicle.js";
+import Booking from "../model/bookings.js";
+import BookingSeat from "../model/bookingSeat.js";
 
 const getPublishRideEligibility = async (req, res) => {
   try {
@@ -489,7 +491,7 @@ const getRideById = async (req, res) => {
     const ride = await Ride.findById(rideId)
       .populate({
         path: "ownerId",
-        select: "firstName lastName profileImage",
+        select: "firstName lastName profileImage averageRating",
       })
       .populate({
         path: "vehicleId",
@@ -529,12 +531,37 @@ const getRideById = async (req, res) => {
       rideId: ride._id,
     }).lean();
 
+    const bookedSeats = await BookingSeat.find({
+      rideId: ride._id,
+      status: "CONFIRMED",
+    })
+      .populate({
+        path: "bookingId",
+        select: "passengerId",
+        populate: {
+          path: "passengerId",
+          select: "firstName lastName profileImage",
+        },
+      })
+      .lean();
+    const seats = bookedSeats.map((seat) => ({
+      seatNumber: seat.seatNumber,
+      passenger: seat.bookingId?.passengerId
+        ? {
+            _id: seat.bookingId.passengerId._id,
+            firstName: seat.bookingId.passengerId.firstName,
+            lastName: seat.bookingId.passengerId.lastName,
+            profileImage: seat.bookingId.passengerId.profileImage,
+          }
+        : null,
+    }));
     return res.status(200).json({
       success: true,
       message: "Ride fetched successfully",
       ride: {
         ...ride,
         preferences: preference,
+        seats,
       },
     });
   } catch (error) {

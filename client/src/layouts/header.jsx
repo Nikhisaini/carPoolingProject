@@ -10,6 +10,8 @@ import {
   PlusCircle,
   Search,
   CarTaxiFront,
+  Bookmark,
+  Calendar,
 } from "lucide-react";
 import { logout } from "@/redux/slices/authSlice";
 import api from "@/services/Api";
@@ -236,6 +238,14 @@ function Header() {
                   >
                     <CarTaxiFront size={18} />
                     Rides
+                  </Link>
+                  <Link
+                    to="/my-bookings"
+                    onClick={() => setOpen(false)}
+                    className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 transition hover:bg-gray-50"
+                  >
+                    <Calendar size={18} />
+                    Bookings
                   </Link>
 
                   <div className="border-t border-gray-100">

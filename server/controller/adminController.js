@@ -4,6 +4,7 @@ import LicenceCategoryMapping from "../model/LicenceCategoryMapping.js";
 import User from "../model/user.js";
 import Vehicle from "../model/vehicle.js";
 import verifyDrivingLicence from "../services/cashfreeVerification.js";
+import Booking from "../model/bookings.js";
 
 const getAllLicence = async (req, res) => {
   try {
@@ -403,7 +404,7 @@ const getAllUsers = async (req, res) => {
       users,
     });
   } catch (error) {
-    console.log("Get All Users Error:", error);
+    console.error("Get All Users Error:", error);
     return res.status(500).json({
       success: false,
       message: "Internal Server Error.",
@@ -450,7 +451,7 @@ const blockUser = async (req, res) => {
       isBlocked: user.isBlocked,
     });
   } catch (error) {
-    console.log("Error While Block User".error);
+    console.error("Error While Block User".error);
     return res.status(500).json({
       success: false,
       message: "Internal Server Error",
@@ -485,7 +486,27 @@ const unblockUser = async (req, res) => {
       isBlocked: user.isBlocked,
     });
   } catch (error) {
-    console.log("Error While Unblock User".error);
+    console.error("Error While Unblock User".error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
+  }
+};
+
+const getAllBookings = async (req, res) => {
+  try {
+    const bookings = await Booking.find({})
+      .populate("rideId")
+      .populate("passengerId");
+
+    return res.status(200).json({
+      success: true,
+      count: bookings.length,
+      bookings,
+    });
+  } catch (error) {
+    console.error("Get Bookings Error:", error);
     return res.status(500).json({
       success: false,
       message: "Internal Server Error",

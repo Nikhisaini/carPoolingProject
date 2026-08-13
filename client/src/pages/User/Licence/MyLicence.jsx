@@ -25,18 +25,16 @@ function MyLicence() {
   const [selectedImage, setSelectedImage] = useState(null);
 
   const getLicence = async () => {
+    setErrorMessage("");
     try {
       setLoading(true);
-      setErrorMessage("");
 
       const res = await api.get("/licence/my-licence");
-      console.log("Licence API Response:", res.data);
-      console.log("Categories:", res.data.licence?.categories);
+
       setLicence(res.data.licence);
     } catch (error) {
-      setErrorMessage(
-        error.response?.data?.message || "Failed to load licence",
-      );
+      const message = error.response?.data?.message || "Failed to load licence";
+      setErrorMessage(message);
     } finally {
       setLoading(false);
     }

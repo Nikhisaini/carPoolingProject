@@ -3,13 +3,12 @@ import { createBooking } from "../services/bookingService.js";
 import validateBooking from "../validations/validateBooking.js";
 import Ride from "../model/ride.js";
 import BookingSeat from "../model/bookingSeat.js";
+import Booking from "../model/bookings.js";
 
 const bookRide = async (req, res) => {
   try {
     const passengerId = req.user._id;
-
     const { rideId, seats } = req.body;
-
     const validation = validateBooking({
       rideId,
       seats,
@@ -35,6 +34,7 @@ const bookRide = async (req, res) => {
           ? "Ride booked successfully"
           : "Booking request submitted successfully",
       booking: result.booking,
+      razorpayOrder: result.razorpayOrder,
     });
   } catch (error) {
     console.error("Book Ride Error:", error);
@@ -48,6 +48,7 @@ const bookRide = async (req, res) => {
 
     const businessErrors = [
       "Ride is not available for booking",
+      "You cannot book your own ride",
       "This ride has already departed",
       "Only",
       "Seat number must be between",
@@ -123,4 +124,128 @@ const getRideSeats = async (req, res) => {
     });
   }
 };
-export { bookRide, getRideSeats };
+
+const myBookings = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    const bookings = await Booking.find({
+      passengerId: userId,
+    }).populate({
+      path: "rideId",
+      populate: [
+        {
+          path: "ownerId",
+          select:
+            "firstName lastName profileImage rating averageRating ratingAverage",
+        },
+        {
+          path: "vehicleId",
+        },
+        {
+          path: "departureLocationId",
+        },
+        {
+          path: "destinationLocationId",
+        },
+      ],
+    });
+
+    if (!bookings) {
+      return res.status(400).json({
+        success: false,
+        message: "No booking found",
+      });
+    }
+    return res.status(200).json({
+      success: true,
+      message: "My Bookings Fetched Successfully",
+      bookings,
+    });
+  } catch (error) {
+    console.error("Get Bookings Error", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
+  }
+};
+
+const getBookingDetail = async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const userId = req.user._id;
+
+    if (!bookingId) {
+      return res.status(400).json({
+        success: false,
+        message: "Booking ID is required",
+      });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(bookingId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid booking ID",
+      });
+    }
+
+    const booking = await Booking.findOne({
+      _id: bookingId,
+      passengerId: userId,
+    })
+      .populate({
+        path: "rideId",
+        populate: [
+          {
+            path: "ownerId",
+            select:
+              "firstName lastName profileImage rating averageRating ratingAverage",
+          },
+          {
+            path: "vehicleId",
+          },
+          {
+            path: "departureLocationId",
+          },
+          {
+            path: "destinationLocationId",
+          },
+        ],
+      })
+      .lean();
+
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: "Booking not found",
+      });
+    }
+
+    const seats = await BookingSeat.find({
+      bookingId: booking._id,
+      status: "CONFIRMED",
+    })
+      .select("seatNumber status")
+      .sort({ seatNumber: 1 })
+      .lean();
+
+    return res.status(200).json({
+      success: true,
+      message: "Booking fetched successfully",
+      booking: {
+        ...booking,
+        seats,
+      },
+    });
+  } catch (error) {
+    console.error("Get Booking Detail Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
+  }
+};
+
+export { bookRide, getRideSeats, myBookings, getBookingDetail };

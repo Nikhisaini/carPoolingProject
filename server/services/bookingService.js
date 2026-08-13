@@ -3,6 +3,7 @@ import Ride from "../model/ride.js";
 import BookingSeat from "../model/bookingSeat.js";
 import Booking from "../model/bookings.js";
 import { getIO } from "../socket/socketServer.js";
+import { createRazorpayOrder } from "./razorpayService.js";
 
 const createBooking = async ({ rideId, passengerId, seats }) => {
   const session = await mongoose.startSession();
@@ -18,6 +19,14 @@ const createBooking = async ({ rideId, passengerId, seats }) => {
           $in: ["PUBLISHED", "FULL"],
         },
       }).session(session);
+
+      if (!ride) {
+        throw new Error("Ride is not available for booking");
+      }
+
+      if (ride.ownerId.toString() === passengerId.toString()) {
+        throw new Error("You cannot book your own ride");
+      }
 
       if (!ride) {
         throw new Error("Ride is not available for booking");
@@ -66,8 +75,7 @@ const createBooking = async ({ rideId, passengerId, seats }) => {
       const discountAmount = 0;
       const totalAmount = subtotal - discountAmount;
 
-      const bookingStatus =
-        ride.bookingMode === "AUTO" ? "CONFIRMED" : "PENDING";
+      const bookingStatus = "PENDING";
 
       const [createdBooking] = await Booking.create(
         [
@@ -80,6 +88,7 @@ const createBooking = async ({ rideId, passengerId, seats }) => {
             discountAmount,
             totalAmount,
             status: bookingStatus,
+            paymentStatus: "PENDING",
             bookedAt: new Date(),
             confirmedAt: bookingStatus === "CONFIRMED" ? new Date() : null,
           },
@@ -90,18 +99,15 @@ const createBooking = async ({ rideId, passengerId, seats }) => {
       );
 
       booking = createdBooking;
-
+      const holdExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
       const seatDocuments = seats.map((seatNumber) => ({
         bookingId: booking._id,
         rideId,
         seatNumber,
-        status: bookingStatus === "CONFIRMED" ? "CONFIRMED" : "HELD",
+        status: "HELD",
         heldAt: new Date(),
-        holdExpiresAt:
-          bookingStatus === "CONFIRMED"
-            ? null
-            : new Date(Date.now() + 10 * 60 * 1000),
-        confirmedAt: bookingStatus === "CONFIRMED" ? new Date() : null,
+        holdExpiresAt,
+        confirmedAt: null,
       }));
 
       await BookingSeat.insertMany(seatDocuments, {
@@ -122,24 +128,98 @@ const createBooking = async ({ rideId, passengerId, seats }) => {
 
       remainingAvailableSeats = ride.availableSeats;
     });
+    const razorpayOrder = await createRazorpayOrder({
+      amount: booking.totalAmount,
+      currency: "INR",
+      receipt: booking._id.toString(),
+    });
 
-    if (booking.status === "CONFIRMED") {
-      const io = getIO();
-
-      io.to(`ride:${rideId}`).emit("ride:seat-booked", {
-        rideId: rideId.toString(),
-        seatNumbers: seats,
-        availableSeats: remainingAvailableSeats,
-      });
-    }
+    booking.razorpayOrderId = razorpayOrder.id;
+    await booking.save();
 
     return {
       success: true,
       booking,
+      razorpayOrder: {
+        id: razorpayOrder.id,
+        amount: razorpayOrder.amount,
+        currency: razorpayOrder.currency,
+      },
     };
   } finally {
     await session.endSession();
   }
 };
 
-export { createBooking };
+const retryBookingPayment = async ({ bookingId, passengerId }) => {
+  const booking = await Booking.findOne({
+    _id: bookingId,
+    passengerId,
+    status: "PENDING",
+    paymentStatus: {
+      $in: ["PENDING", "FAILED"],
+    },
+  });
+
+  if (!booking) {
+    throw new Error("Booking is not available for payment retry");
+  }
+
+  const bookingSeats = await BookingSeat.find({
+    bookingId: booking._id,
+    status: "HELD",
+  }).lean();
+
+  if (bookingSeats.length === 0) {
+    throw new Error("Booking seats are no longer available");
+  }
+
+  const expiredSeats = bookingSeats.some(
+    (seat) => seat.holdExpiresAt && new Date(seat.holdExpiresAt) <= new Date(),
+  );
+
+  if (expiredSeats) {
+    await BookingSeat.updateMany(
+      {
+        bookingId: booking._id,
+        status: "HELD",
+      },
+      {
+        $set: {
+          status: "CANCELLED",
+          cancelledAt: new Date(),
+        },
+      },
+    );
+
+    booking.status = "CANCELLED";
+    booking.cancelledAt = new Date();
+    booking.cancellationReason = "Payment hold expired";
+
+    await booking.save();
+
+    throw new Error("Payment time expired. Please select the seats again");
+  }
+
+  const razorpayOrder = await createRazorpayOrder({
+    amount: booking.totalAmount,
+    currency: "INR",
+    receipt: booking._id.toString(),
+  });
+
+  booking.razorpayOrderId = razorpayOrder.id;
+  booking.paymentStatus = "PENDING";
+
+  await booking.save();
+
+  return {
+    booking,
+    razorpayOrder: {
+      id: razorpayOrder.id,
+      amount: razorpayOrder.amount,
+      currency: razorpayOrder.currency,
+    },
+  };
+};
+
+export { createBooking, retryBookingPayment };
