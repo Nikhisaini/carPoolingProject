@@ -39,6 +39,19 @@ const bookingSchema = new mongoose.Schema(
       required: true,
       min: 0,
     },
+    pickupLocationId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "RideLocation",
+      required: false,
+      default: null,
+    },
+
+    dropoffLocationId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "RideLocation",
+      required: false,
+      default: null,
+    },
     status: {
       type: String,
       enum: ["PENDING", "CONFIRMED", "REJECTED", "CANCELLED", "COMPLETED"],

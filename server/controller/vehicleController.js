@@ -217,7 +217,7 @@ const getSingleVehicle = async (req, res) => {
       vehicle,
     });
   } catch (error) {
-    console.log("Get Vehicle Error:", error);
+    console.error("Get Vehicle Error:", error);
 
     return res.status(500).json({
       success: false,
@@ -347,7 +347,7 @@ const updateVehicle = async (req, res) => {
       vehicle,
     });
   } catch (error) {
-    console.log("Update Vehicle Error:", error);
+    console.error("Update Vehicle Error:", error);
 
     return res.status(500).json({
       success: false,
@@ -387,7 +387,7 @@ const deleteVehicle = async (req, res) => {
       message: "Vehicle deleted successfully",
     });
   } catch (error) {
-    console.log("Delete Vehicle Error:", error);
+    console.error("Delete Vehicle Error:", error);
 
     return res.status(500).json({
       success: false,

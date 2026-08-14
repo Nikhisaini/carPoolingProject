@@ -5,7 +5,13 @@ import Booking from "../model/bookings.js";
 import { getIO } from "../socket/socketServer.js";
 import { createRazorpayOrder } from "./razorpayService.js";
 
-const createBooking = async ({ rideId, passengerId, seats }) => {
+const createBooking = async ({
+  rideId,
+  passengerId,
+  seats,
+  pickupLocationId,
+  dropoffLocationId,
+}) => {
   const session = await mongoose.startSession();
 
   try {
@@ -90,6 +96,8 @@ const createBooking = async ({ rideId, passengerId, seats }) => {
           {
             rideId,
             passengerId,
+            pickupLocationId,
+            dropoffLocationId,
             numberOfSeats,
             pricePerSeat,
             subtotal,

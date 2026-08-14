@@ -39,7 +39,7 @@ const getAllLicence = async (req, res) => {
       licences: licencesWithCategories,
     });
   } catch (error) {
-    console.log("Get All Licence Error", error);
+    console.error("Get All Licence Error", error);
 
     return res.status(500).json({
       success: false,

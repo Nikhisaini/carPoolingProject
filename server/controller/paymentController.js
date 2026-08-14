@@ -1,5 +1,6 @@
 import Booking from "../model/bookings.js";
 import BookingSeat from "../model/bookingSeat.js";
+import RideCheckIn from "../model/rideCheckIn.js";
 import { retryBookingPayment } from "../services/bookingService.js";
 import { verifyRazorpayPayment } from "../services/razorpayService.js";
 import { getIO } from "../socket/socketServer.js";
@@ -8,11 +9,6 @@ const verifyPayment = async (req, res) => {
   try {
     const passengerId = req.user._id;
     const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = req.body;
-
-    console.log("Payment Verify:", {
-      razorpayOrderId,
-      passengerId: passengerId.toString(),
-    });
 
     const booking = await Booking.findOne({
       razorpayOrderId,
@@ -48,6 +44,23 @@ const verifyPayment = async (req, res) => {
 
     await booking.save();
 
+    await RideCheckIn.findOneAndUpdate(
+      {
+        bookingId: booking._id,
+      },
+      {
+        $setOnInsert: {
+          rideId: booking.rideId,
+          bookingId: booking._id,
+          passengerId: booking.passengerId,
+          status: "WAITING",
+        },
+      },
+      {
+        upsert: true,
+        new: true,
+      },
+    );
     await BookingSeat.updateMany(
       {
         bookingId: booking._id,
@@ -75,14 +88,13 @@ const verifyPayment = async (req, res) => {
       rideId: booking.rideId.toString(),
       seatNumbers,
     });
-    console.log(razorpayOrderId, razorpayPaymentId, razorpaySignature);
 
     return res.status(200).json({
       success: true,
       message: "Payment Details recieved",
     });
   } catch (error) {
-    console.log("Verify payment error", error);
+    console.error("Verify payment error", error);
     return res.status(500).json({
       success: false,
       message: "Internal Server Error",

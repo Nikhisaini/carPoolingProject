@@ -41,8 +41,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useNavigate } from "react-router-dom";
 
 function MyRides() {
+  const navigate = useNavigate();
   const [rides, setRides] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -175,6 +177,9 @@ function MyRides() {
   const handleEditRide = (rideId) => {
     console.log("Edit ride:", rideId);
   };
+  const handleManageRide = (rideId) => {
+    navigate(`/my-rides/${rideId}/manage`);
+  };
 
   if (loading) {
     return (
@@ -205,16 +210,6 @@ function MyRides() {
       <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
         <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <div className="mb-2 flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white">
-                <CarFront className="h-4 w-4" />
-              </div>
-
-              <span className="text-sm font-medium text-blue-600">
-                Ride Management
-              </span>
-            </div>
-
             <h1 className="text-2xl font-bold tracking-tight text-slate-900">
               My Rides
             </h1>
@@ -449,7 +444,10 @@ function MyRides() {
                       View Details
                     </Button>
 
-                    <Button className="h-9 rounded-lg bg-blue-600 px-4 text-sm shadow-sm hover:bg-blue-700">
+                    <Button
+                      onClick={() => handleManageRide(ride._id)}
+                      className="h-9 rounded-lg bg-blue-600 px-4 text-sm shadow-sm hover:bg-blue-700"
+                    >
                       Manage Ride
                       <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
                     </Button>

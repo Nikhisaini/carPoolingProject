@@ -3,7 +3,10 @@ import Ride from "../model/ride.js";
 import RidePreference from "../model/ridePreference.js";
 import validateRideVehicle from "../validations/validateRide.js";
 import validateRideSearch from "../validations/validateRideSearch.js";
-import { searchRides as searchRidesService } from "../services/rideService.js";
+import {
+  completeRide,
+  searchRides as searchRidesService,
+} from "../services/rideService.js";
 import RideLocation from "../model/rideLocation.js";
 import Licence from "../model/licence.js";
 import Vehicle from "../model/vehicle.js";
@@ -463,7 +466,7 @@ const getMyRides = async (req, res) => {
       rides,
     });
   } catch (error) {
-    console.log("Get My Rides Error:", error);
+    console.error("Get My Rides Error:", error);
     return res.status(500).json({
       success: false,
       message: "Internal Server Error",
@@ -797,6 +800,125 @@ const cancelRide = async (req, res) => {
   }
 };
 
+const startRide = async (req, res) => {
+  try {
+    const { rideId } = req.params;
+    const driverId = req.user._id;
+
+    if (!rideId) {
+      return res.status(400).json({
+        success: false,
+        message: "Ride ID is required",
+      });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(rideId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid Ride ID",
+      });
+    }
+
+    const ride = await Ride.findOne({
+      _id: rideId,
+      ownerId: driverId,
+    });
+
+    if (!ride) {
+      return res.status(404).json({
+        success: false,
+        message: "Ride not found or you are not the owner",
+      });
+    }
+
+    if (ride.status !== "PUBLISHED" && ride.status !== "FULL") {
+      return res.status(400).json({
+        success: false,
+        message: `Ride cannot be started from ${ride.status} status`,
+      });
+    }
+
+    ride.status = "STARTED";
+    ride.startedAt = new Date();
+
+    await ride.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Ride started successfully",
+      ride: {
+        _id: ride._id,
+        status: ride.status,
+        startedAt: ride.startedAt,
+      },
+    });
+  } catch (error) {
+    console.error("Start Ride Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
+  }
+};
+
+const handleCompleteRide = async (req, res) => {
+  try {
+    const driverId = req.user._id;
+    const { rideId } = req.params;
+
+    if (!rideId) {
+      return res.status(400).json({
+        success: false,
+        message: "Ride ID is required",
+      });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(rideId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid Ride ID",
+      });
+    }
+
+    const result = await completeRide({
+      rideId,
+      driverId,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: result.message,
+      ride: result.ride,
+      noShowCount: result.noShowCount,
+    });
+  } catch (error) {
+    console.error("Complete Ride Error:", error);
+
+    const businessErrors = [
+      "Ride not found or you are not the driver",
+      "Only a started ride can be completed",
+      "All passengers must be verified or marked as no-show before completing the ride",
+    ];
+
+    const isBusinessError = businessErrors.some((message) =>
+      error.message?.startsWith(message),
+    );
+
+    if (isBusinessError) {
+      return res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
 export {
   publishRide,
   getRideById,
@@ -805,4 +927,6 @@ export {
   getPublishRideEligibility,
   getMyRides,
   cancelRide,
+  startRide,
+  handleCompleteRide,
 };

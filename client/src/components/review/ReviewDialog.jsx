@@ -54,9 +54,6 @@ function ReviewDialog({
       onOpenChange(false);
     } catch (error) {
       console.error("Submit Review Error:", error);
-      console.error("Response:", error.response?.data);
-      console.error("Booking ID:", bookingId);
-      console.error("Rating:", rating);
     } finally {
       setLoading(false);
     }
@@ -75,7 +72,7 @@ function ReviewDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-md overflow-hidden rounded-2xl border-0 p-0 shadow-2xl sm:max-w-[440px]"
+        className="max-w-md  sm:max-w-[425px] h-fit p-4 overflow-hidden rounded-2xl border-0 p-0 shadow-2xl sm:max-w-[440px]"
         showCloseButton={false}
       >
         <div className="relative">

@@ -133,7 +133,7 @@ const deleteProfile = async (req, res) => {
       message: "Account deleted successfully",
     });
   } catch (error) {
-    console.log("Delete Profile Error:", error);
+    console.error("Delete Profile Error:", error);
 
     return res.status(500).json({
       success: false,

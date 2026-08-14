@@ -108,7 +108,7 @@ function BookingDetailDialog({ bookingId, open, onOpenChange }) {
         return "border-amber-200 bg-amber-50 text-amber-700";
 
       case "COMPLETED":
-        return "border-slate-200 bg-slate-100 text-slate-700";
+        return "border-green-200 bg-green-100 text-green-700";
 
       default:
         return "border-slate-200 bg-slate-50 text-slate-600";
@@ -257,8 +257,8 @@ function BookingDetailDialog({ bookingId, open, onOpenChange }) {
                     </div>
 
                     {hasRating && (
-                      <div className="flex shrink-0 items-center gap-1 rounded-full bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700">
-                        <Star className="h-3 w-3 fill-current" />
+                      <div className="flex shrink-0 items-center gap-1 rounded-full bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-400">
+                        <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
                         {Number(rating).toFixed(1)}
                       </div>
                     )}

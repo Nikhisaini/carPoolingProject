@@ -11,7 +11,7 @@ const getFuelTypes = async (req, res) => {
       data: furelTypes,
     });
   } catch (error) {
-    console.log("Get FuelTypes Error", error);
+    console.error("Get FuelTypes Error", error);
     return res.status(500).json({
       success: false,
       message: "Internal server error",

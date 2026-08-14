@@ -148,7 +148,7 @@ const getLicenceById = async (req, res) => {
       },
     });
   } catch (error) {
-    console.log("Get Licence Error:", error);
+    console.error("Get Licence Error:", error);
 
     return res.status(500).json({
       success: false,

@@ -13,7 +13,7 @@ const getLicenceCategories = async (req, res) => {
       data: categories,
     });
   } catch (error) {
-    console.log("Get Licence Categories Error", error);
+    console.error("Get Licence Categories Error", error);
 
     return res.status(500).json({
       success: false,

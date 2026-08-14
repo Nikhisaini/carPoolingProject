@@ -4,11 +4,6 @@ const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
   key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
-console.log("Razorpay Key:", process.env.RAZORPAY_KEY_ID);
-console.log(
-  "Razorpay Secret Loaded:",
-  Boolean(process.env.RAZORPAY_KEY_SECRET),
-);
 
 const createRazorpayOrder = async ({ amount, currency = "INR", receipt }) => {
   const order = await razorpay.orders.create({

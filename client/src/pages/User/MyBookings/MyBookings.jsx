@@ -15,6 +15,7 @@ import {
   UserRound,
 } from "lucide-react";
 import React, { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 function MyBookings() {
   const [bookings, setBookings] = useState([]);
@@ -54,7 +55,7 @@ function MyBookings() {
         throw new Error(res.data?.message || "Unable to get review status");
       }
       if (!res.data.canReview) {
-        return;
+        return toast.warning("You have already reviewed this ride");
       }
       setSelectedReviewBooking({
         bookingId: booking._id,

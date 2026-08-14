@@ -112,7 +112,6 @@ const register = async (req, res) => {
 
 const verifyOtp = async (req, res) => {
   try {
-    console.log("Request Body:", req.body);
     const { userId, otp } = req.body;
 
     if (!userId || !otp) {

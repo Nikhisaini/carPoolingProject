@@ -281,12 +281,12 @@ function RideDetail() {
     try {
       setLoading(true);
       setErrorMessage("");
-      const res = await api.get(`/ride/getride/${rideId}`);
+      const res = await api.get(`/ride/${rideId}`);
       if (!res.data?.success) {
         throw new Error(res.data?.message || "Unable to load ride details.");
       }
       setRide(res.data.ride);
-      console.log("RIDE SEATS:", res.data.ride.seats);
+      console.log("RIDE SEATS:", res.data.ride);
     } catch (error) {
       console.error("Get Ride Details Error:", error);
       setErrorMessage(

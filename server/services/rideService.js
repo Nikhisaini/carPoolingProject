@@ -1,6 +1,9 @@
+import Booking from "../model/bookings.js";
 import Ride from "../model/ride.js";
+import RideCheckIn from "../model/rideCheckIn.js";
 import RideLocation from "../model/rideLocation.js";
 import RidePreference from "../model/ridePreference.js";
+import sendEmail from "../utils/sendEmail.js";
 
 const normalizeCity = (value) => {
   return (
@@ -214,4 +217,162 @@ const searchRides = async ({
   };
 };
 
-export { searchRides };
+const completeRide = async ({ rideId, driverId }) => {
+  const ride = await Ride.findOne({
+    _id: rideId,
+    ownerId: driverId,
+  })
+    .select("_id ownerId status completedAt")
+    .lean();
+
+  if (!ride) {
+    throw new Error("Ride not found or you are not the driver");
+  }
+
+  if (ride.status !== "STARTED") {
+    throw new Error("Only a started ride can be completed");
+  }
+
+  const bookings = await Booking.find({
+    rideId,
+    status: "CONFIRMED",
+    paymentStatus: "PAID",
+  })
+    .populate({
+      path: "passengerId",
+      select: "firstName lastName email",
+    })
+    .lean();
+
+  const bookingIds = bookings.map((booking) => booking._id);
+
+  const checkIns = await RideCheckIn.find({
+    rideId,
+    bookingId: { $in: bookingIds },
+  }).lean();
+
+  const checkInMap = new Map(
+    checkIns.map((checkIn) => [checkIn.bookingId.toString(), checkIn]),
+  );
+
+  const incompletePassengers = [];
+
+  for (const booking of bookings) {
+    const checkIn = checkInMap.get(booking._id.toString());
+
+    if (!checkIn) {
+      incompletePassengers.push({
+        bookingId: booking._id,
+        passengerId: booking.passengerId?._id,
+        status: "NO_CHECK_IN",
+      });
+
+      continue;
+    }
+
+    if (!["VERIFIED", "NO_SHOW"].includes(checkIn.status)) {
+      incompletePassengers.push({
+        bookingId: booking._id,
+        passengerId: booking.passengerId?._id,
+        status: checkIn.status,
+      });
+    }
+  }
+
+  if (incompletePassengers.length > 0) {
+    throw new Error(
+      "All passengers must be verified or marked as no-show before completing the ride",
+    );
+  }
+
+  const noShowPassengers = [];
+  for (const booking of bookings) {
+    const checkIn = checkInMap.get(booking._id.toString());
+
+    if (checkIn?.status === "NO_SHOW" && booking.passengerId?.email) {
+      noShowPassengers.push({
+        booking,
+        checkIn,
+      });
+    }
+  }
+
+  for (const { booking, checkIn } of noShowPassengers) {
+    const passenger = booking.passengerId;
+
+    const reasonText = {
+      PASSENGER_NOT_ARRIVED: "Passenger did not arrive at the pickup location.",
+      PASSENGER_NOT_REACHABLE: "Passenger could not be reached.",
+      PASSENGER_REFUSED_TO_BOARD: "Passenger refused to board the ride.",
+      OTHER: "Other reason.",
+    };
+
+    await sendEmail({
+      to: passenger.email,
+      subject: "Ride No-Show Notification",
+      text: `Your ride has been completed.You were marked as a no-show by the driver.
+      Reason: ${reasonText[checkIn.noShowReason] || checkIn.noShowReason}Note: ${checkIn.noShowNote || "No additional note provided."}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+          <h2>Ride No-Show Notification</h2>
+          <p>
+            Hello ${passenger.firstName || "Passenger"},
+          </p>
+          <p>
+            Your ride has been completed by the driver.
+          </p>
+          <p>
+            You were marked as <strong>NO-SHOW</strong>.
+          </p>
+          <p>
+            <strong>Reason:</strong><br/>
+            ${reasonText[checkIn.noShowReason] || checkIn.noShowReason}
+          </p>
+          <p>
+            <strong>Driver Note:</strong><br/>
+            ${checkIn.noShowNote || "No additional note provided."}
+          </p>
+          <p>
+            If you believe this was incorrect, please contact support.
+          </p>
+        </div>
+      `,
+    });
+  }
+
+  await Booking.updateMany(
+    {
+      rideId,
+      status: "CONFIRMED",
+      paymentStatus: "PAID",
+    },
+    {
+      $set: {
+        status: "COMPLETED",
+        completedAt: new Date(),
+      },
+    },
+  );
+  const completedAt = new Date();
+  const updatedRide = await Ride.findByIdAndUpdate(
+    rideId,
+    {
+      $set: {
+        status: "COMPLETED",
+        completedAt,
+      },
+    },
+    {
+      new: true,
+    },
+  ).lean();
+
+  return {
+    success: true,
+    message: "Ride completed successfully",
+    ride: updatedRide,
+    noShowCount: noShowPassengers.length,
+  };
+};
+
+export { searchRides, completeRide };

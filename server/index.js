@@ -18,6 +18,7 @@ import startLicenceVerificationCron from "./cron/licenceVerificationCron.js";
 import bookingRoutes from "./routes/bookingRoutes.js";
 import { initializeSocket } from "./socket/socketServer.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
+import rideCheckInRoutes from "./routes/ridecheckInRoutes.js";
 await connectDb();
 startLicenceVerificationCron();
 const app = express();
@@ -40,6 +41,7 @@ app.use("/api/ride", rideRouter);
 app.use("/api/booking", bookingRoutes);
 app.use("/api/payment", paymentRoutes);
 app.use("/api/review", reviewRoutes);
+app.use("/api/ride-checkin", rideCheckInRoutes);
 
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
