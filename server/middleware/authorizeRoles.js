@@ -7,7 +7,7 @@ const authorizeRoles = (...allowedRoles) => {
       });
     }
 
-    if (!allowedRoles.includes(req.user.role)) {
+    if (!allowedRoles.includes(req.user.roleId?.name)) {
       return res.status(403).json({
         success: false,
         message: "Access denied. You do not have permission.",

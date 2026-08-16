@@ -3,6 +3,7 @@ import connectDb from "./db.js";
 
 import FuelType from "../model/fuelType.js";
 import LicenceCategory from "../model/licenceCategory.js";
+import Role from "../model/role.js";
 
 const seedMasterData = async () => {
   try {
@@ -31,13 +32,37 @@ const seedMasterData = async () => {
         name: "Bike/Scooter",
         isActive: true,
       },
-
       {
         type: "HMV",
         name: "Bus",
         isActive: true,
       },
     ]);
+
+    // Seed Roles
+    await Role.findOneAndUpdate(
+      { name: "User" },
+      {
+        name: "User",
+        isActive: true,
+      },
+      {
+        upsert: true,
+        new: true,
+      },
+    );
+
+    await Role.findOneAndUpdate(
+      { name: "Admin" },
+      {
+        name: "Admin",
+        isActive: true,
+      },
+      {
+        upsert: true,
+        new: true,
+      },
+    );
 
     console.log("Master Data Seeded Successfully");
 

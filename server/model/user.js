@@ -42,10 +42,10 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
-    role: {
-      type: String,
-      enum: ["User", "Admin"],
-      default: "User",
+    roleId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Role",
+      required: true,
     },
     isVerified: {
       type: Boolean,

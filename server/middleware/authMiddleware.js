@@ -14,7 +14,9 @@ const authMiddleware = async (req, res, next) => {
     const toekn = authHeader.split(" ")[1];
     const decoded = jwt.verify(toekn, process.env.JWT_SECRET);
 
-    const user = await User.findById(decoded.id).select("-password");
+    const user = await User.findById(decoded.id)
+      .select("-password")
+      .populate("roleId", "name");
     if (!user) {
       return res.status(400).json({
         success: false,
@@ -22,7 +24,7 @@ const authMiddleware = async (req, res, next) => {
       });
     }
     req.user = user;
-
+    console.log("AUTH USER ROLE:", req.user.roleId);
     next();
   } catch (error) {
     console.error("Auth Middleware Error:", error);

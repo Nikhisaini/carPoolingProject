@@ -5,6 +5,7 @@ import UserVerification from "../model/userVerification.js";
 import sendOtp from "../utils/sendOtp.js";
 import client from "../config/twilio.js";
 import jwt from "jsonwebtoken";
+import Role from "../model/role.js";
 
 const validateRegister = ({
   firstName,
@@ -84,12 +85,25 @@ const register = async (req, res) => {
     }
     const hashedPassword = await bcrypt.hash(password, 12);
 
+    const userRole = await Role.findOne({
+      name: "User",
+      isActive: true,
+    });
+
+    if (!userRole) {
+      return res.status(500).json({
+        success: false,
+        message: "Default user role not found",
+      });
+    }
+
     const user = await User.create({
       firstName: firstName.trim(),
       lastName: lastName.trim(),
       phoneNumber,
       email: email.toLowerCase(),
       password: hashedPassword,
+      roleId: userRole._id,
       isVerified: false,
     });
 
@@ -246,8 +260,9 @@ const login = async (req, res) => {
 
     const user = await User.findOne({
       email: normalizedEmail,
-    });
-
+    }).populate("roleId", "name");
+    console.log("LOGIN ROLE ID:", user.roleId);
+    console.log("LOGIN ROLE NAME:", user.roleId?.name);
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -277,7 +292,7 @@ const login = async (req, res) => {
     const token = jwt.sign(
       {
         id: user._id,
-        role: user.role,
+        role: user.roleId.name,
       },
       process.env.JWT_SECRET,
       {
@@ -295,7 +310,7 @@ const login = async (req, res) => {
         lastName: user.lastName,
         email: user.email,
         phoneNumber: user.phoneNumber,
-        role: user.role,
+        role: user.roleId.name,
         profileImage: user.profileImage,
       },
     });

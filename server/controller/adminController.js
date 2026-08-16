@@ -396,7 +396,10 @@ const rejectVehicle = async (req, res) => {
 
 const getAllUsers = async (req, res) => {
   try {
-    const users = await User.find().select("-password").sort({ createdAt: -1 });
+    const users = await User.find()
+      .select("-password")
+      .populate("roleId", "name")
+      .sort({ createdAt: -1 });
 
     return res.status(200).json({
       success: true,
@@ -422,14 +425,14 @@ const blockUser = async (req, res) => {
       });
     }
 
-    const user = await User.findById(userId);
+    const user = await User.findById(userId).populate("roleId", "name");
     if (!user) {
       return res.status(400).json({
         success: false,
         message: "User not found",
       });
     }
-    if (user.role === "Admin") {
+    if (user.roleId?.name === "Admin") {
       return res.status(403).json({
         success: false,
         message: "Admin users cannot be blocked",
