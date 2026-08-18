@@ -78,6 +78,6 @@ const rideCheckInSchema = mongoose.Schema(
 const RideCheckIn = mongoose.model(
   "RideCheckIn",
   rideCheckInSchema,
-  "ride_checkon",
+  "ride_checkin",
 );
 export default RideCheckIn;

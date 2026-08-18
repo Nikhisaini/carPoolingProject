@@ -261,8 +261,6 @@ const login = async (req, res) => {
     const user = await User.findOne({
       email: normalizedEmail,
     }).populate("roleId", "name");
-    console.log("LOGIN ROLE ID:", user.roleId);
-    console.log("LOGIN ROLE NAME:", user.roleId?.name);
     if (!user) {
       return res.status(401).json({
         success: false,

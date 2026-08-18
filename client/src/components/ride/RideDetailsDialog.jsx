@@ -22,12 +22,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import api from "@/services/Api";
+import { toast } from "sonner";
 
 function RideDetailsDialog({ rideId, open, onOpenChange }) {
   const [ride, setRide] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [followStates, setFollowStates] = useState({});
+  const [followLoading, setFollowLoading] = useState({});
 
   useEffect(() => {
     if (!open || !rideId) return;
@@ -52,6 +56,57 @@ function RideDetailsDialog({ rideId, open, onOpenChange }) {
 
     getRideDetails();
   }, [open, rideId]);
+
+  useEffect(() => {
+    if (!open || !ride || ride.status !== "COMPLETED") return;
+
+    const loadFollowStatuses = async () => {
+      try {
+        const passengers = ride.seats
+          ?.map((seat) => seat.passenger)
+          .filter((passenger) => passenger?._id);
+
+        if (!passengers?.length) return;
+
+        const results = await Promise.all(
+          passengers.map(async (passenger) => {
+            try {
+              const res = await api.get(`/follow/status/${passenger._id}`);
+
+              return {
+                userId: passenger._id,
+                isFollowing: res.data?.isFollowing || false,
+                followerCount: res.data?.followerCount || 0,
+              };
+            } catch (error) {
+              console.error(`Follow status error for ${passenger._id}:`, error);
+
+              return {
+                userId: passenger._id,
+                isFollowing: false,
+                followerCount: 0,
+              };
+            }
+          }),
+        );
+
+        const states = {};
+
+        results.forEach((item) => {
+          states[item.userId] = {
+            isFollowing: item.isFollowing,
+            followerCount: item.followerCount,
+          };
+        });
+
+        setFollowStates(states);
+      } catch (error) {
+        console.error("Load Follow Status Error:", error);
+      }
+    };
+
+    loadFollowStatuses();
+  }, [open, ride]);
 
   const formatDate = (date) => {
     if (!date) return "--";
@@ -79,6 +134,43 @@ function RideDetailsDialog({ rideId, open, onOpenChange }) {
         return "border-red-200 bg-red-50 text-red-700";
       default:
         return "border-slate-200 bg-slate-100 text-slate-600";
+    }
+  };
+
+  const handleFollowToggle = async (userId) => {
+    try {
+      setFollowLoading((prev) => ({
+        ...prev,
+        [userId]: true,
+      }));
+
+      const currentState = followStates[userId]?.isFollowing;
+      let res;
+      if (currentState) {
+        res = await api.delete(`/follow/${userId}`);
+      } else {
+        res = await api.post(`/follow/${userId}`);
+      }
+
+      if (!res.data?.success) {
+        throw new Error(res.data?.message || "Failed to update follow");
+      }
+
+      setFollowStates((prev) => ({
+        ...prev,
+        [userId]: {
+          isFollowing: res.data.isFollowing,
+          followerCount: res.data.followerCount,
+        },
+      }));
+    } catch (error) {
+      console.error("Follow Toggle Error:", error);
+      toast.error(error.response?.data?.message || error.message);
+    } finally {
+      setFollowLoading((prev) => ({
+        ...prev,
+        [userId]: false,
+      }));
     }
   };
 
@@ -415,37 +507,78 @@ function RideDetailsDialog({ rideId, open, onOpenChange }) {
                     </div>
 
                     <div className="space-y-2">
-                      {ride.seats.map((seat) => (
-                        <div
-                          key={seat.seatNumber}
-                          className="flex items-center gap-3 rounded-2xl border px-3.5 py-3"
-                        >
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted">
-                            {seat.passenger?.profileImage ? (
-                              <img
-                                src={`http://localhost:8081/${seat.passenger.profileImage}`}
-                                alt="Passenger"
-                                className="h-full w-full object-cover"
-                              />
-                            ) : (
-                              <UserRound className="h-4 w-4 text-muted-foreground" />
+                      {ride.seats.map((seat) => {
+                        const passengerId = seat.passenger?._id;
+
+                        const followState = followStates[passengerId];
+
+                        const isFollowing = followState?.isFollowing || false;
+
+                        const isFollowLoading =
+                          followLoading[passengerId] || false;
+
+                        return (
+                          <div
+                            key={seat.seatNumber}
+                            className="flex items-center gap-3 rounded-2xl border px-3.5 py-3"
+                          >
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted">
+                              {seat.passenger?.profileImage ? (
+                                <img
+                                  src={`http://localhost:8081/${seat.passenger.profileImage}`}
+                                  alt="Passenger"
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : (
+                                <UserRound className="h-4 w-4 text-muted-foreground" />
+                              )}
+                            </div>
+
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-medium">
+                                {seat.passenger?.firstName || ""}{" "}
+                                {seat.passenger?.lastName || ""}
+                              </p>
+
+                              <div className="flex items-center gap-2">
+                                <p className="text-xs text-muted-foreground">
+                                  Seat {seat.seatNumber}
+                                </p>
+
+                                {ride.status === "COMPLETED" && followState && (
+                                  <>
+                                    <span className="text-xs text-muted-foreground">
+                                      •
+                                    </span>
+
+                                    <span className="text-xs text-muted-foreground">
+                                      {followState.followerCount || 0} followers
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+
+                            {ride.status === "COMPLETED" && passengerId && (
+                              <Button
+                                size="sm"
+                                variant={isFollowing ? "outline" : "default"}
+                                disabled={isFollowLoading}
+                                onClick={() => handleFollowToggle(passengerId)}
+                                className="shrink-0 rounded-xl"
+                              >
+                                {isFollowLoading
+                                  ? "..."
+                                  : isFollowing
+                                    ? "Following"
+                                    : "Follow"}
+                              </Button>
                             )}
+
+                            <Check className="h-4 w-4 shrink-0 text-emerald-500" />
                           </div>
-
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-medium">
-                              {seat.passenger?.firstName || ""}{" "}
-                              {seat.passenger?.lastName || ""}
-                            </p>
-
-                            <p className="text-xs text-muted-foreground">
-                              Seat {seat.seatNumber}
-                            </p>
-                          </div>
-
-                          <Check className="h-4 w-4 text-emerald-500" />
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </section>
                 )}

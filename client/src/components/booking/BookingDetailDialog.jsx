@@ -31,12 +31,75 @@ function BookingDetailDialog({ bookingId, open, onOpenChange }) {
   const [booking, setBooking] = useState(null);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followerCount, setFollowerCount] = useState(0);
+  const [followLoading, setFollowLoading] = useState(false);
 
   useEffect(() => {
     if (!open || !bookingId) return;
 
     getBookingDetail();
   }, [open, bookingId]);
+
+  useEffect(() => {
+    if (!open || !booking) return;
+
+    const driverId = booking?.rideId?.ownerId?._id;
+
+    if (!driverId || booking?.rideId?.status !== "COMPLETED") {
+      return;
+    }
+
+    const getFollowStatus = async () => {
+      try {
+        const res = await api.get(`/follow/status/${driverId}`);
+
+        if (res.data?.success) {
+          setIsFollowing(res.data.isFollowing || false);
+          setFollowerCount(res.data.followerCount || 0);
+        }
+      } catch (error) {
+        console.error("Get Follow Status Error:", error);
+      }
+    };
+
+    getFollowStatus();
+  }, [open, booking]);
+
+  const handleFollowToggle = async () => {
+    const driverId = owner?._id;
+
+    if (!driverId) return;
+
+    try {
+      setFollowLoading(true);
+
+      let res;
+
+      if (isFollowing) {
+        res = await api.delete(`/follow/${driverId}`);
+      } else {
+        res = await api.post(`/follow/${driverId}`);
+      }
+
+      if (!res.data?.success) {
+        throw new Error(res.data?.message || "Failed to update follow status");
+      }
+
+      setIsFollowing(res.data.isFollowing);
+      setFollowerCount(res.data.followerCount || 0);
+    } catch (error) {
+      console.error("Follow Toggle Error:", error);
+
+      setErrorMessage(
+        error.response?.data?.message ||
+          error.message ||
+          "Failed to update follow status.",
+      );
+    } finally {
+      setFollowLoading(false);
+    }
+  };
 
   const getBookingDetail = async () => {
     try {
@@ -252,16 +315,50 @@ function BookingDetailDialog({ bookingId, open, onOpenChange }) {
                           {owner?.firstName || ""} {owner?.lastName || ""}
                         </p>
 
-                        <p className="mt-0.5 text-xs text-slate-400">Driver</p>
+                        <div className="mt-1 flex items-center gap-2">
+                          <p className="text-xs text-slate-400">Driver</p>
+
+                          {ride?.status === "COMPLETED" && (
+                            <>
+                              <span className="text-xs text-slate-300">•</span>
+
+                              <span className="text-xs text-slate-400">
+                                {followerCount} followers
+                              </span>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
 
-                    {hasRating && (
-                      <div className="flex shrink-0 items-center gap-1 rounded-full bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-400">
-                        <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-                        {Number(rating).toFixed(1)}
-                      </div>
-                    )}
+                    <div className="flex shrink-0 items-center gap-2">
+                      {hasRating && (
+                        <div className="flex items-center gap-1 rounded-full bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-400">
+                          <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+
+                          {Number(rating).toFixed(1)}
+                        </div>
+                      )}
+
+                      {ride?.status === "COMPLETED" && owner?._id && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={isFollowing ? "outline" : "default"}
+                          disabled={followLoading}
+                          onClick={handleFollowToggle}
+                          className="rounded-xl"
+                        >
+                          {followLoading ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : isFollowing ? (
+                            "Following"
+                          ) : (
+                            "Follow"
+                          )}
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </section>
 
