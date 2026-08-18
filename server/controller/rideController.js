@@ -12,6 +12,7 @@ import Licence from "../model/licence.js";
 import Vehicle from "../model/vehicle.js";
 import Booking from "../model/bookings.js";
 import BookingSeat from "../model/bookingSeat.js";
+import UserFollow from "../model/userFollow.js";
 
 const getPublishRideEligibility = async (req, res) => {
   try {
@@ -495,7 +496,7 @@ const getRideById = async (req, res) => {
     const ride = await Ride.findById(rideId)
       .populate({
         path: "ownerId",
-        select: "firstName lastName profileImage averageRating",
+        select: "firstName lastName profileImage ",
       })
       .populate({
         path: "vehicleId",
@@ -544,21 +545,51 @@ const getRideById = async (req, res) => {
         select: "passengerId",
         populate: {
           path: "passengerId",
-          select: "firstName lastName profileImage",
+          select: "firstName lastName profileImage averageRating ratingCount",
         },
       })
       .lean();
-    const seats = bookedSeats.map((seat) => ({
-      seatNumber: seat.seatNumber,
-      passenger: seat.bookingId?.passengerId
-        ? {
-            _id: seat.bookingId.passengerId._id,
-            firstName: seat.bookingId.passengerId.firstName,
-            lastName: seat.bookingId.passengerId.lastName,
-            profileImage: seat.bookingId.passengerId.profileImage,
-          }
-        : null,
-    }));
+    const passengerIds = bookedSeats
+      .map((seat) => seat.bookingId?.passengerId?._id)
+      .filter(Boolean);
+
+    const followerCounts = await UserFollow.aggregate([
+      {
+        $match: {
+          followingId: { $in: passengerIds },
+        },
+      },
+      {
+        $group: {
+          _id: "$followingId",
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const followerCountMap = new Map(
+      followerCounts.map((item) => [item._id.toString(), item.count]),
+    );
+
+    const seats = bookedSeats.map((seat) => {
+      const passenger = seat.bookingId?.passengerId;
+
+      return {
+        seatNumber: seat.seatNumber,
+        passenger: passenger
+          ? {
+              _id: passenger._id,
+              firstName: passenger.firstName,
+              lastName: passenger.lastName,
+              profileImage: passenger.profileImage,
+              averageRating: passenger.averageRating || 0,
+              ratingCount: passenger.ratingCount || 0,
+              followersCount:
+                followerCountMap.get(passenger._id.toString()) || 0,
+            }
+          : null,
+      };
+    });
     return res.status(200).json({
       success: true,
       message: "Ride fetched successfully",

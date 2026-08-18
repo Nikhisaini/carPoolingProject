@@ -426,6 +426,7 @@ function RideDetail() {
 
   const getPassengerInitial = (passenger) =>
     passenger?.firstName?.charAt(0)?.toUpperCase() || "U";
+
   return (
     <div className="min-h-[calc(100vh-73px)] bg-[#f8fafc]">
       <div className="mx-auto w-full max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
@@ -724,7 +725,7 @@ function RideDetail() {
                                   {isOccupied ? (
                                     <Tooltip>
                                       <TooltipTrigger asChild>
-                                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-300 text-xs font-bold text-gray-700 ring-2 ring-white">
+                                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-300 text-xs font-bold text-gray-700 ring-2 ring-white">
                                           {getPassengerInitial(passenger)}
                                         </div>
                                       </TooltipTrigger>
@@ -732,7 +733,7 @@ function RideDetail() {
                                       <TooltipContent
                                         side="top"
                                         align="center"
-                                        className="w-52 bg-blue-400  rounded-xl p-3"
+                                        className="w-52 bg-gray-900  rounded-xl p-3"
                                       >
                                         <div className="flex items-center  gap-3">
                                           {passenger?.profileImage ? (
@@ -752,9 +753,9 @@ function RideDetail() {
                                               {passenger?.firstName}{" "}
                                               {passenger?.lastName}
                                             </p>
-
                                             <p className="mt-1 text-[10px] text-white-500">
-                                              Seat {seatNumber}
+                                              Followers:{" "}
+                                              {passenger?.followersCount}
                                             </p>
                                           </div>
                                         </div>
@@ -819,7 +820,7 @@ function RideDetail() {
                                 {isOccupied ? (
                                   <Tooltip>
                                     <TooltipTrigger asChild>
-                                      <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-300 text-xs font-bold text-gray-700 ring-2 ring-white">
+                                      <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-300 text-xs font-bold text-gray-700 ring-2 ring-white">
                                         {getPassengerInitial(passenger)}
                                       </div>
                                     </TooltipTrigger>
@@ -847,9 +848,9 @@ function RideDetail() {
                                             {passenger?.firstName}{" "}
                                             {passenger?.lastName}
                                           </p>
-
                                           <p className="mt-1 text-[10px] text-white-500">
-                                            Seat {seatNumber}
+                                            Followers:{" "}
+                                            {passenger?.followersCount}
                                           </p>
                                         </div>
                                       </div>
