@@ -20,6 +20,7 @@ import { initializeSocket } from "./socket/socketServer.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
 import rideCheckInRoutes from "./routes/ridecheckInRoutes.js";
 import userFollowRoutes from "./routes/UserFollowRoutes.js";
+import chatRoutes from "./routes/chatRoutes.js";
 await connectDb();
 startLicenceVerificationCron();
 const app = express();
@@ -44,6 +45,7 @@ app.use("/api/payment", paymentRoutes);
 app.use("/api/review", reviewRoutes);
 app.use("/api/ride-checkin", rideCheckInRoutes);
 app.use("/api/follow", userFollowRoutes);
+app.use("/api/chat", chatRoutes);
 
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
