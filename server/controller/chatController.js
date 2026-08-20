@@ -1,6 +1,9 @@
 import {
   checkMutualFollow,
+  getConversationMessages,
   getOrCreateConversation,
+  markConversationAsRead,
+  sendMessage,
 } from "../services/chatService.js";
 
 const canChat = async (req, res) => {
@@ -81,4 +84,113 @@ const createConversation = async (req, res) => {
   }
 };
 
-export { canChat, createConversation };
+const sendChatMessage = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { conversationId, message } = req.body;
+    if (!conversationId || message) {
+      return res.status(400).json({
+        success: false,
+        message: "Conversation ID and message are required",
+      });
+    }
+    const savedMessage = await sendMessage(userId, conversationId, message);
+
+    return res.status(201).json({
+      success: true,
+      message: "Message sent successfully",
+      message,
+    });
+  } catch (error) {
+    console.error("Sent Chat Message Error:", error);
+
+    if (
+      error.message === "Invalid conversation ID" ||
+      error.message === "Message cannot be empty"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
+    if (error.message === "You are not a participent of this conversation") {
+      return res.status(403).json({
+        success: false,
+        message: error.message,
+      });
+    }
+    return res.status(500).json({
+      success: false,
+      message: "Failed to send message",
+    });
+  }
+};
+
+const getMessage = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { conversationId } = req.params;
+    const page = Number(req.user.page) || 1;
+    const limit = Nuumber(req.user.limit) || 30;
+
+    const message = await getConversationMessages(
+      userId,
+      conversationId,
+      page,
+      limit,
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: message,
+      pagination: {
+        page,
+        limit,
+      },
+    });
+  } catch (error) {
+    console.error("Get Message Error:", error);
+
+    if (error.message === "You are not a participant in this conversation") {
+      return res.status(403).json({
+        success: false,
+        message: error.message,
+      });
+    }
+    return res.status(500).json({
+      success: false,
+      message: "Failed to get messages",
+    });
+  }
+};
+
+const markAsRead = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    const { conversationId } = req.params;
+
+    await markConversationAsRead(userId, conversationId);
+
+    return res.status(200).json({
+      success: true,
+      message: "Conversation marked as read",
+    });
+  } catch (error) {
+    console.error("Mark Read Error:", error);
+
+    if (error.message === "Conversation not found") {
+      return res.status(404).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to mark conversation as read",
+    });
+  }
+};
+export { canChat, createConversation, sendChatMessage, getMessage, markAsRead };
