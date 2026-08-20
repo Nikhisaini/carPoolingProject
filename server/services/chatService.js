@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import UserFollow from "../model/userFollow.js";
 import ConversationParticipant from "../model/conversationParticipant.js";
 import Conversation from "../model/conversation.js";
+import Message from "../model/message.js";
 
 const checkMutualFollow = async (userId, otherUserId) => {
   const [userFollowOther, otherFollowUser] = await Promise.all([
@@ -100,4 +101,115 @@ const getOrCreateConversation = async (userId, otherUserId) => {
   }
 };
 
-export { checkMutualFollow, getOrCreateConversation };
+const sendMessage = async (userId, conversationId, messageText) => {
+  if (!mongoose.Types.ObjectId.isValid(conversationId)) {
+    throw new Error("Invalid conversation ID");
+  }
+
+  const message = messageText?.trim();
+
+  if (!message) {
+    throw new Error("Message cannot be empty");
+  }
+
+  const participant = await ConversationParticipant.findOne({
+    conversationId,
+    userId,
+  });
+
+  if (!participant) {
+    throw new Error("You are not a participant in this conversation");
+  }
+
+  const session = await mongoose.startSession();
+
+  try {
+    let savedMessage;
+
+    await session.withTransaction(async () => {
+      const message = await Message.create(
+        [
+          {
+            conversationId,
+            senderId: userId,
+            message,
+          },
+        ],
+        { session },
+      );
+
+      savedMessage = message[0];
+
+      await Conversation.findByIdAndUpdate(
+        conversationId,
+        {
+          lastMessageId: savedMessage._id,
+          lastMessageAt: savedMessage.createdAt,
+        },
+        { session },
+      );
+    });
+
+    return Message.findById(savedMessage._id).populate(
+      "senderId",
+      "firstName lastName profileImage",
+    );
+  } finally {
+    await session.endSession();
+  }
+};
+
+const getConversationMessages = async (
+  userId,
+  conversationId,
+  page = 1,
+  limit = 30,
+) => {
+  const participant = await ConversationParticipant.findOne({
+    conversationId,
+    userId,
+  });
+  if (!participant) {
+    throw new Error("You are not a participant in this conversation");
+  }
+
+  const skip = (page - 1) * limit;
+
+  const messages = await Message.find({
+    conversationId,
+  })
+    .populate("senderId", "firstName lastName profileImage")
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit)
+    .lean();
+
+  return messages.reverse();
+};
+
+const markConversationAsRead = async (userId, conversationId) => {
+  const prticipant = await ConversationParticipant.findByIdAndUpdate(
+    {
+      conversationId,
+      userId,
+    },
+    {
+      lastReadAt: new Date(),
+    },
+    {
+      new: true,
+    },
+  );
+  if (!participant) {
+    throw new Error("COnversation not found");
+  }
+  return participant;
+};
+
+export {
+  checkMutualFollow,
+  getOrCreateConversation,
+  sendMessage,
+  getConversationMessages,
+  markConversationAsRead,
+};
