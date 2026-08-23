@@ -1,15 +1,29 @@
+import mongoose from "mongoose";
 import {
-  checkMutualFollow,
+  canChatWithUser,
+  getConversationById,
   getConversationMessages,
   getOrCreateConversation,
+  getUserConversations,
+  getUnreadMessageCount,
   markConversationAsRead,
   sendMessage,
 } from "../services/chatService.js";
+import { getIO } from "../socket/socketServer.js";
+import ConversationParticipant from "../model/conversationParticipant.js";
 
 const canChat = async (req, res) => {
   try {
     const userId = req.user._id;
     const { userId: otherUserId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(otherUserId)) {
+      return res.status(400).json({
+        success: false,
+        canChat: false,
+        message: "Invalid user ID",
+      });
+    }
 
     if (userId.toString() === otherUserId.toString()) {
       return res.status(400).json({
@@ -19,11 +33,11 @@ const canChat = async (req, res) => {
       });
     }
 
-    const canChat = await checkMutualFollow(userId, otherUserId);
+    const allowed = await canChatWithUser(userId, otherUserId);
 
     return res.status(200).json({
       success: true,
-      canChat,
+      canChat: allowed,
     });
   } catch (error) {
     console.error("Can Chat Error:", error);
@@ -31,6 +45,65 @@ const canChat = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Failed to check chat permission",
+    });
+  }
+};
+
+const getConversations = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    const conversations = await getUserConversations(userId);
+
+    return res.status(200).json({
+      success: true,
+      data: conversations,
+    });
+  } catch (error) {
+    console.error("Get Conversations Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to load conversations",
+    });
+  }
+};
+
+const getConversationDetail = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { conversationId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(conversationId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid conversation ID",
+      });
+    }
+
+    const conversation = await getConversationById(userId, conversationId);
+
+    return res.status(200).json({
+      success: true,
+      data: conversation,
+    });
+  } catch (error) {
+    console.error("Get Conversation Detail Error:", error);
+
+    if (
+      error.message === "Invalid conversation ID" ||
+      error.message === "You are not a participant in this conversation" ||
+      error.message === "Conversation not found"
+    ) {
+      return res.status(404).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to load conversation details",
     });
   }
 };
@@ -44,6 +117,13 @@ const createConversation = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "User ID is required",
+      });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(otherUserId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid user ID",
       });
     }
 
@@ -67,19 +147,9 @@ const createConversation = async (req, res) => {
       });
     }
 
-    if (
-      error.message ===
-      "You can only chat with users who mutually follow each other"
-    ) {
-      return res.status(403).json({
-        success: false,
-        message: error.message,
-      });
-    }
-
-    return res.status(500).json({
+    return res.status(403).json({
       success: false,
-      message: "Failed to create conversation",
+      message: error.message || "Failed to create conversation",
     });
   }
 };
@@ -88,18 +158,51 @@ const sendChatMessage = async (req, res) => {
   try {
     const userId = req.user._id;
     const { conversationId, message } = req.body;
-    if (!conversationId || message) {
+
+    if (!conversationId || !message || !message.trim()) {
       return res.status(400).json({
         success: false,
         message: "Conversation ID and message are required",
       });
     }
+
+    if (!mongoose.Types.ObjectId.isValid(conversationId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid conversation ID",
+      });
+    }
+
     const savedMessage = await sendMessage(userId, conversationId, message);
+
+    try {
+      const io = getIO();
+      io.to(`conversation:${conversationId}`).emit(
+        "chat:message",
+        savedMessage,
+      );
+
+      const participants = await ConversationParticipant.find({
+        conversationId,
+      }).select("userId");
+
+      for (const participant of participants) {
+        const participantId = participant.userId.toString();
+        if (participantId !== userId.toString()) {
+          io.to(`user:${participantId}`).emit("chat:message:new", savedMessage);
+        }
+      }
+    } catch (socketErr) {
+      console.warn(
+        "Socket broadcast error in sendChatMessage:",
+        socketErr.message,
+      );
+    }
 
     return res.status(201).json({
       success: true,
       message: "Message sent successfully",
-      message,
+      data: savedMessage,
     });
   } catch (error) {
     console.error("Sent Chat Message Error:", error);
@@ -114,12 +217,13 @@ const sendChatMessage = async (req, res) => {
       });
     }
 
-    if (error.message === "You are not a participent of this conversation") {
+    if (error.message === "You are not a participant in this conversation") {
       return res.status(403).json({
         success: false,
         message: error.message,
       });
     }
+
     return res.status(500).json({
       success: false,
       message: "Failed to send message",
@@ -131,10 +235,17 @@ const getMessage = async (req, res) => {
   try {
     const userId = req.user._id;
     const { conversationId } = req.params;
-    const page = Number(req.user.page) || 1;
-    const limit = Nuumber(req.user.limit) || 30;
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 30;
 
-    const message = await getConversationMessages(
+    if (!mongoose.Types.ObjectId.isValid(conversationId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid conversation ID",
+      });
+    }
+
+    const messages = await getConversationMessages(
       userId,
       conversationId,
       page,
@@ -143,7 +254,7 @@ const getMessage = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      data: message,
+      data: messages,
       pagination: {
         page,
         limit,
@@ -158,6 +269,7 @@ const getMessage = async (req, res) => {
         message: error.message,
       });
     }
+
     return res.status(500).json({
       success: false,
       message: "Failed to get messages",
@@ -168,8 +280,14 @@ const getMessage = async (req, res) => {
 const markAsRead = async (req, res) => {
   try {
     const userId = req.user._id;
-
     const { conversationId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(conversationId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid conversation ID",
+      });
+    }
 
     await markConversationAsRead(userId, conversationId);
 
@@ -193,4 +311,33 @@ const markAsRead = async (req, res) => {
     });
   }
 };
-export { canChat, createConversation, sendChatMessage, getMessage, markAsRead };
+
+const getUnreadCount = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const count = await getUnreadMessageCount(userId);
+
+    return res.status(200).json({
+      success: true,
+      unreadCount: count,
+    });
+  } catch (error) {
+    console.error("Get Unread Count Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to get unread message count",
+    });
+  }
+};
+
+export {
+  canChat,
+  getConversations,
+  getConversationDetail,
+  createConversation,
+  sendChatMessage,
+  getMessage,
+  markAsRead,
+  getUnreadCount,
+};

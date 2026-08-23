@@ -255,26 +255,37 @@ const publishRide = async (req, res) => {
       });
     }
 
-    const sameLocation =
-      Number(departureLocation.latitude) ===
-        Number(destinationLocation.latitude) &&
-      Number(departureLocation.longitude) ===
-        Number(destinationLocation.longitude);
+    const depLat = Number(departureLocation.latitude);
+    const depLon = Number(departureLocation.longitude);
+    const destLat = Number(destinationLocation.latitude);
+    const destLon = Number(destinationLocation.longitude);
+
+    const sameLocation = depLat === destLat && depLon === destLon;
 
     if (sameLocation) {
       return res.status(400).json({
         success: false,
-        message: "Departure and destination cannot be the same",
+        message: "Departure and destination cannot be the same location",
       });
     }
 
-    if (
-      departureLocation.cityNormalized.trim().toLowerCase() ===
-      destinationLocation.cityNormalized.trim().toLowerCase()
-    ) {
+    // Calculate straight-line distance in km
+    const R = 6371;
+    const dLat = ((destLat - depLat) * Math.PI) / 180;
+    const dLon = ((destLon - depLon) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((depLat * Math.PI) / 180) *
+        Math.cos((destLat * Math.PI) / 180) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distanceKm = R * c;
+
+    if (distanceKm < 1.5) {
       return res.status(400).json({
         success: false,
-        message: "Departure and destination cities cannot be the same",
+        message: "Departure and destination must be at least 1.5 km apart",
       });
     }
 
@@ -351,87 +362,78 @@ const publishRide = async (req, res) => {
       });
     }
 
-    const session = await mongoose.startSession();
+    const createRideDocuments = async (opts = {}) => {
+      const departureLocationDoc = new RideLocation({
+        city: departureLocation.city.trim(),
+        cityNormalized: departureLocation.cityNormalized.trim().toLowerCase(),
+        state: departureLocation.state?.trim() || "",
+        country: departureLocation.country?.trim() || "India",
+        address: departureLocation.address.trim(),
+        placeName: departureLocation.placeName?.trim() || "",
+        latitude: depLat,
+        longitude: depLon,
+        placeId: departureLocation.placeId?.trim() || "",
+      });
+      await departureLocationDoc.save(opts);
+
+      const destinationLocationDoc = new RideLocation({
+        city: destinationLocation.city.trim(),
+        cityNormalized: destinationLocation.cityNormalized.trim().toLowerCase(),
+        state: destinationLocation.state?.trim() || "",
+        country: destinationLocation.country?.trim() || "India",
+        address: destinationLocation.address.trim(),
+        placeName: destinationLocation.placeName?.trim() || "",
+        latitude: destLat,
+        longitude: destLon,
+        placeId: destinationLocation.placeId?.trim() || "",
+      });
+      await destinationLocationDoc.save(opts);
+
+      const createdRide = new Ride({
+        ownerId: userId,
+        vehicleId,
+        departureLocationId: departureLocationDoc._id,
+        destinationLocationId: destinationLocationDoc._id,
+        departureAt: departureData,
+        estimatedArrivalAt: arrivalDate,
+        totalSeats: seats,
+        availableSeats: seats,
+        pricePerSeat: price,
+        bookingMode: selectedBookingMode,
+        status: "PUBLISHED",
+        description: description?.trim() || "",
+        publishedAt: new Date(),
+      });
+      await createdRide.save(opts);
+
+      const createdPreference = new RidePreference({
+        rideId: createdRide._id,
+        smokingAllowed: preferences?.smokingAllowed ?? false,
+        petsAllowed: preferences?.petsAllowed ?? false,
+        luggageAllowed: preferences?.luggageAllowed ?? true,
+        musicAllowed: preferences?.musicAllowed ?? true,
+        conversationAllowed: preferences?.conversationAllowed ?? true,
+      });
+      await createdPreference.save(opts);
+
+      return createdRide;
+    };
 
     let ride;
 
     try {
-      await session.withTransaction(async () => {
-        const [departureLocationDoc] = await RideLocation.create(
-          [
-            {
-              city: departureLocation.city.trim(),
-              cityNormalized: departureLocation.cityNormalized
-                .trim()
-                .toLowerCase(),
-              state: departureLocation.state?.trim() || "",
-              country: departureLocation.country?.trim() || "India",
-              address: departureLocation.address.trim(),
-              placeName: departureLocation.placeName?.trim() || "",
-              latitude: Number(departureLocation.latitude),
-              longitude: Number(departureLocation.longitude),
-              placeId: departureLocation.placeId?.trim() || "",
-            },
-          ],
-          { session },
-        );
-
-        const [destinationLocationDoc] = await RideLocation.create(
-          [
-            {
-              city: destinationLocation.city.trim(),
-              cityNormalized: destinationLocation.cityNormalized
-                .trim()
-                .toLowerCase(),
-              state: destinationLocation.state?.trim() || "",
-              country: destinationLocation.country?.trim() || "India",
-              address: destinationLocation.address.trim(),
-              placeName: destinationLocation.placeName?.trim() || "",
-              latitude: Number(destinationLocation.latitude),
-              longitude: Number(destinationLocation.longitude),
-              placeId: destinationLocation.placeId?.trim() || "",
-            },
-          ],
-          { session },
-        );
-
-        [ride] = await Ride.create(
-          [
-            {
-              ownerId: userId,
-              vehicleId,
-              departureLocationId: departureLocationDoc._id,
-              destinationLocationId: destinationLocationDoc._id,
-              departureAt: departureData,
-              estimatedArrivalAt: arrivalDate,
-              totalSeats: seats,
-              availableSeats: seats,
-              pricePerSeat: price,
-              bookingMode: selectedBookingMode,
-              status: "PUBLISHED",
-              description: description?.trim() || "",
-              publishedAt: new Date(),
-            },
-          ],
-          { session },
-        );
-
-        await RidePreference.create(
-          [
-            {
-              rideId: ride._id,
-              smokingAllowed: preferences?.smokingAllowed ?? false,
-              petsAllowed: preferences?.petsAllowed ?? false,
-              luggageAllowed: preferences?.luggageAllowed ?? true,
-              musicAllowed: preferences?.musicAllowed ?? true,
-              conversationAllowed: preferences?.conversationAllowed ?? true,
-            },
-          ],
-          { session },
-        );
-      });
-    } finally {
-      await session.endSession();
+      const session = await mongoose.startSession();
+      try {
+        await session.withTransaction(async () => {
+          ride = await createRideDocuments({ session });
+        });
+      } finally {
+        await session.endSession();
+      }
+    } catch (sessionError) {
+      if (!ride) {
+        ride = await createRideDocuments();
+      }
     }
 
     return res.status(201).json({

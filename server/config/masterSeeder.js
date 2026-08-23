@@ -11,33 +11,28 @@ const seedMasterData = async () => {
 
     console.log("Database Connected");
 
-    await FuelType.deleteMany({});
-    await LicenceCategory.deleteMany({});
+    // Seed Fuel Types
+    const fuelTypes = ["Petrol", "Diesel", "CNG", "Electric"];
+    for (const name of fuelTypes) {
+      await FuelType.findOneAndUpdate(
+        { name },
+        { name, isActive: true },
+        { upsert: true, new: true },
+      );
+    }
 
-    await FuelType.insertMany([
-      { name: "Petrol" },
-      { name: "Diesel" },
-      { name: "CNG" },
-      { name: "Electric" },
-    ]);
-
-    await LicenceCategory.insertMany([
-      {
-        type: "LMV",
-        name: "Car",
-        isActive: true,
-      },
-      {
-        type: "MCWG",
-        name: "Bike/Scooter",
-        isActive: true,
-      },
-      {
-        type: "HMV",
-        name: "Bus",
-        isActive: true,
-      },
-    ]);
+    // Seed Licence Categories
+    const categories = [
+      { type: "LMV", name: "Car", isActive: true },
+      { type: "MCWG", name: "Bike/Scooter", isActive: true },
+      { type: "HMV", name: "Bus", isActive: true },
+    ];
+    for (const cat of categories) {
+      await LicenceCategory.findOneAndUpdate({ type: cat.type }, cat, {
+        upsert: true,
+        new: true,
+      });
+    }
 
     // Seed Roles
     await Role.findOneAndUpdate(

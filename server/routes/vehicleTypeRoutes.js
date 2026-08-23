@@ -1,5 +1,5 @@
 import express from "express";
-import { getUserVehicleTypes } from "../controller/vehicelTypeController.js";
+import { getUserVehicleTypes } from "../controller/vehicleTypeController.js";
 import authMiddleware from "../middleware/authMiddleware.js";
 
 const router = express.Router();

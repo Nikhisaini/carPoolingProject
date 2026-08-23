@@ -7,7 +7,7 @@ import {
   getSingleVehicle,
   updateVehicle,
 } from "../controller/vehicleController.js";
-import uploadVehicel from "../middleware/uploadVehicle.js";
+import uploadVehicle from "../middleware/uploadVehicle.js";
 import multerErrorHandler from "../middleware/multerErrorHandler.js";
 
 const router = express.Router();
@@ -15,7 +15,7 @@ const router = express.Router();
 router.post(
   "/add",
   authMiddleware,
-  uploadVehicel.fields([
+  uploadVehicle.fields([
     {
       name: "vehicleImages",
       maxCount: 5,
@@ -42,7 +42,7 @@ router.get("/:id", authMiddleware, getSingleVehicle);
 router.put(
   "/update/:id",
   authMiddleware,
-  uploadVehicel.fields([
+  uploadVehicle.fields([
     {
       name: "vehicleImages",
       maxCount: 5,

@@ -122,6 +122,12 @@ function Login() {
       } else {
         navigate("/", { replace: true });
       }
+
+      try {
+        connectSocket(res.data.token);
+      } catch (socketError) {
+        console.error("Socket connection setup error:", socketError);
+      }
     } catch (error) {
       const response = error.response?.data;
 

@@ -11,6 +11,9 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import api from "@/services/Api";
 import { format } from "date-fns";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import {
   ArrowDown,
   ArrowRight,
@@ -20,14 +23,15 @@ import {
   Clock3,
   Loader2,
   MapPin,
+  MessageCircle,
   ShieldCheck,
   Star,
   UserRound,
   Users,
 } from "lucide-react";
-import { useEffect, useState } from "react";
 
 function BookingDetailDialog({ bookingId, open, onOpenChange }) {
+  const navigate = useNavigate();
   const [booking, setBooking] = useState(null);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -338,6 +342,49 @@ function BookingDetailDialog({ bookingId, open, onOpenChange }) {
 
                           {Number(rating).toFixed(1)}
                         </div>
+                      )}
+
+                      {Boolean(owner?._id || booking?.rideId?.ownerId) && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={async () => {
+                            const driverId =
+                              owner?._id ||
+                              (typeof booking?.rideId?.ownerId === "object"
+                                ? booking?.rideId?.ownerId?._id
+                                : booking?.rideId?.ownerId);
+
+                            if (!driverId) {
+                              toast.error("Driver details not found");
+                              return;
+                            }
+
+                            try {
+                              const res = await api.post("/chat/conversation", {
+                                userId: driverId,
+                              });
+                              if (res.data?.data?._id) {
+                                onOpenChange(false);
+                                navigate(`/chat/${res.data.data._id}`);
+                              } else {
+                                toast.error("Could not open chat conversation");
+                              }
+                            } catch (err) {
+                              console.error("Open chat error:", err);
+                              toast.error(
+                                err.response?.data?.message ||
+                                  err.message ||
+                                  "Failed to open chat",
+                              );
+                            }
+                          }}
+                          className="gap-1 rounded-xl border-blue-200 text-blue-600 hover:bg-blue-50"
+                        >
+                          <MessageCircle className="h-4 w-4" />
+                          Chat
+                        </Button>
                       )}
 
                       {ride?.status === "COMPLETED" && owner?._id && (

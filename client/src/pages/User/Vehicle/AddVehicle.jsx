@@ -131,13 +131,15 @@ function AddVehicle() {
 
         setLicenceApproved(true);
 
-        const [categoryRes, fuelRes] = await Promise.all([
-          api.get("/licence-category"),
+        const [licenceDataRes, fuelRes] = await Promise.all([
+          api.get("/licence/my-licence"),
           api.get("/fuel-type/list"),
         ]);
 
-        setLicenceCategories(categoryRes.data.data);
-        setFuelTypes(fuelRes.data.data);
+        const myCategories =
+          licenceDataRes.data?.licence?.categories?.filter(Boolean) || [];
+        setLicenceCategories(myCategories);
+        setFuelTypes(fuelRes.data?.data || []);
       } catch (error) {
         console.log("Licence Check Error", error);
         setLicenceApproved(false);
@@ -497,13 +499,23 @@ function AddVehicle() {
                       }
                     >
                       <SelectTrigger id="licenceCategoryId" className="w-full">
-                        <SelectValue placeholder="Select vehicle type" />
+                        <SelectValue placeholder="Select vehicle type">
+                          {(value) => {
+                            const cat = licenceCategories.find(
+                              (c) => c._id === value,
+                            );
+                            return cat
+                              ? `${cat.name}${cat.type ? ` (${cat.type})` : ""}`
+                              : "Select vehicle type";
+                          }}
+                        </SelectValue>
                       </SelectTrigger>
 
                       <SelectContent>
                         {licenceCategories.map((category) => (
                           <SelectItem key={category._id} value={category._id}>
                             {category.name}
+                            {category.type ? ` (${category.type})` : ""}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -528,7 +540,14 @@ function AddVehicle() {
                       }
                     >
                       <SelectTrigger id="fuelType" className="w-full">
-                        <SelectValue placeholder="Select fuel type" />
+                        <SelectValue placeholder="Select fuel type">
+                          {(value) => {
+                            const f = fuelTypes.find(
+                              (item) => item._id === value,
+                            );
+                            return f ? f.name : "Select fuel type";
+                          }}
+                        </SelectValue>
                       </SelectTrigger>
 
                       <SelectContent>

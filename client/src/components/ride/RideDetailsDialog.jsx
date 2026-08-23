@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import {
   CalendarDays,
@@ -26,8 +27,10 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import api from "@/services/Api";
 import { toast } from "sonner";
+import { getImageUrl } from "@/lib/utils";
 
 function RideDetailsDialog({ rideId, open, onOpenChange }) {
+  const navigate = useNavigate();
   const [ride, setRide] = useState(null);
   const [loading, setLoading] = useState(false);
   const [followStates, setFollowStates] = useState({});
@@ -508,7 +511,11 @@ function RideDetailsDialog({ rideId, open, onOpenChange }) {
 
                     <div className="space-y-2">
                       {ride.seats.map((seat) => {
-                        const passengerId = seat.passenger?._id;
+                        const passengerId =
+                          seat.passenger?._id ||
+                          (typeof seat.passenger === "string"
+                            ? seat.passenger
+                            : null);
 
                         const followState = followStates[passengerId];
 
@@ -525,7 +532,7 @@ function RideDetailsDialog({ rideId, open, onOpenChange }) {
                             <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted">
                               {seat.passenger?.profileImage ? (
                                 <img
-                                  src={`http://localhost:8081/${seat.passenger.profileImage}`}
+                                  src={getImageUrl(seat.passenger.profileImage)}
                                   alt="Passenger"
                                   className="h-full w-full object-cover"
                                 />
@@ -558,6 +565,37 @@ function RideDetailsDialog({ rideId, open, onOpenChange }) {
                                 )}
                               </div>
                             </div>
+
+                            {passengerId && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={async () => {
+                                  try {
+                                    const res = await api.post(
+                                      "/chat/conversation",
+                                      {
+                                        userId: passengerId,
+                                      },
+                                    );
+                                    if (res.data?.data?._id) {
+                                      onOpenChange(false);
+                                      navigate(`/chat/${res.data.data._id}`);
+                                    }
+                                  } catch (err) {
+                                    console.error("Open chat error:", err);
+                                    toast.error(
+                                      err.response?.data?.message ||
+                                        "Failed to open chat",
+                                    );
+                                  }
+                                }}
+                                className="shrink-0 gap-1 rounded-xl border-blue-200 text-blue-600 hover:bg-blue-50"
+                              >
+                                <MessageCircle className="h-3.5 w-3.5" />
+                                Chat
+                              </Button>
+                            )}
 
                             {ride.status === "COMPLETED" && passengerId && (
                               <Button

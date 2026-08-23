@@ -81,10 +81,29 @@ const searchRides = async ({
 
   const skip = (safePage - 1) * safeLimit;
 
+  const departureRegex = new RegExp(
+    departureCityNormalized.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+    "i",
+  );
+  const destinationRegex = new RegExp(
+    destinationCityNormalized.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+    "i",
+  );
+
   const locations = await RideLocation.find({
-    cityNormalized: {
-      $in: [departureCityNormalized, destinationCityNormalized],
-    },
+    $or: [
+      {
+        cityNormalized: {
+          $in: [departureCityNormalized, destinationCityNormalized],
+        },
+      },
+      { cityNormalized: departureRegex },
+      { cityNormalized: destinationRegex },
+      { address: departureRegex },
+      { address: destinationRegex },
+      { placeName: departureRegex },
+      { placeName: destinationRegex },
+    ],
   })
     .select(
       "_id city cityNormalized state country address placeName latitude longitude placeId",
@@ -95,11 +114,27 @@ const searchRides = async ({
   const destinationLocationIds = [];
 
   for (const location of locations) {
-    if (location.cityNormalized === departureCityNormalized) {
+    const locCity = location.cityNormalized || "";
+    const locAddr = (location.address || "").toLowerCase();
+    const locPlace = (location.placeName || "").toLowerCase();
+
+    if (
+      locCity === departureCityNormalized ||
+      locCity.includes(departureCityNormalized) ||
+      departureCityNormalized.includes(locCity) ||
+      locAddr.includes(departureCityNormalized) ||
+      locPlace.includes(departureCityNormalized)
+    ) {
       departureLocationIds.push(location._id);
     }
 
-    if (location.cityNormalized === destinationCityNormalized) {
+    if (
+      locCity === destinationCityNormalized ||
+      locCity.includes(destinationCityNormalized) ||
+      destinationCityNormalized.includes(locCity) ||
+      locAddr.includes(destinationCityNormalized) ||
+      locPlace.includes(destinationCityNormalized)
+    ) {
       destinationLocationIds.push(location._id);
     }
   }
@@ -120,6 +155,11 @@ const searchRides = async ({
     };
   }
 
+  const now = new Date();
+  const effectiveStart = new Date(
+    Math.max(startOfDay.getTime(), now.getTime()),
+  );
+
   const rideFilter = {
     status: "PUBLISHED",
     departureLocationId: {
@@ -129,7 +169,7 @@ const searchRides = async ({
       $in: destinationLocationIds,
     },
     departureAt: {
-      $gte: startOfDay,
+      $gte: effectiveStart,
       $lt: endOfDay,
     },
     availableSeats: {

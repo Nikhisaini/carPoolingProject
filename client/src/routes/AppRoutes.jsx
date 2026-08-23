@@ -29,6 +29,8 @@ import MyLicence from "@/pages/User/Licence/MyLicence";
 import RideDetail from "@/pages/Rides/RideDetail";
 import MyBookings from "@/pages/User/MyBookings/MyBookings";
 import ManageRide from "@/pages/User/MyRides/ManageRide";
+import ChatInbox from "@/pages/Chat/ChatInbox";
+import ChatConversation from "@/pages/Chat/ChatConversation";
 
 function AppRoutes() {
   return (
@@ -71,6 +73,8 @@ function AppRoutes() {
           <Route path="/my-rides/:rideId/manage" element={<ManageRide />} />
           <Route path="/ride/:rideId" element={<RideDetail />} />
           <Route path="/my-bookings" element={<MyBookings />} />
+          <Route path="/chat" element={<ChatInbox />} />
+          <Route path="/chat/:conversationId" element={<ChatInbox />} />
         </Route>
       </Route>
 

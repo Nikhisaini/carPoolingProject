@@ -9,20 +9,22 @@ import profileRoutes from "./routes/profileRoutes.js";
 import vehicleRoutes from "./routes/vehicleRoutes.js";
 import licenceRoutes from "./routes/licenceRoutes.js";
 import licenceCategoryRoutes from "./routes/licenceCategoryRoutes.js";
-import fuelTypesRoutes from "./routes/fuelTypesRoutes.js";
+import fuelTypeRoutes from "./routes/fuelTypeRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import rideRouter from "./routes/rideRoutes.js";
 import reviewRoutes from "./routes/reviewRoutes.js";
 
 import startLicenceVerificationCron from "./cron/licenceVerificationCron.js";
+import startSeatHoldCleanupCron from "./cron/seatHoldCleanupCron.js";
 import bookingRoutes from "./routes/bookingRoutes.js";
 import { initializeSocket } from "./socket/socketServer.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
-import rideCheckInRoutes from "./routes/ridecheckInRoutes.js";
-import userFollowRoutes from "./routes/UserFollowRoutes.js";
+import rideCheckInRoutes from "./routes/rideCheckInRoutes.js";
+import userFollowRoutes from "./routes/userFollowRoutes.js";
 import chatRoutes from "./routes/chatRoutes.js";
 await connectDb();
 startLicenceVerificationCron();
+startSeatHoldCleanupCron();
 const app = express();
 const corsoptions = {
   origin: "http://localhost:5173",
@@ -37,7 +39,7 @@ app.use("/api/profile", profileRoutes);
 app.use("/api/licence", licenceRoutes);
 app.use("/api/vehicle", vehicleRoutes);
 app.use("/api/licence-category", licenceCategoryRoutes);
-app.use("/api/fuel-type", fuelTypesRoutes);
+app.use("/api/fuel-type", fuelTypeRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/ride", rideRouter);
 app.use("/api/booking", bookingRoutes);

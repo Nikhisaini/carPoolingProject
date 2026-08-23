@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import {
   followUser,
   getFollowerCount,
@@ -9,6 +10,13 @@ const follow = async (req, res) => {
   try {
     const followerId = req.user._id;
     const { userId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid user ID",
+      });
+    }
 
     const result = await followUser(followerId, userId);
 
@@ -32,6 +40,13 @@ const unfollow = async (req, res) => {
     const followerId = req.user._id;
     const { userId } = req.params;
 
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid user ID",
+      });
+    }
+
     const result = await unfollowUser(followerId, userId);
 
     return res.status(200).json({
@@ -54,6 +69,13 @@ const getStatus = async (req, res) => {
     const followerId = req.user._id;
     const { userId } = req.params;
 
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid user ID",
+      });
+    }
+
     const result = await getFollowStatus(followerId, userId);
 
     return res.status(200).json({
@@ -73,6 +95,13 @@ const getStatus = async (req, res) => {
 const getCount = async (req, res) => {
   try {
     const { userId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid user ID",
+      });
+    }
 
     const followerCount = await getFollowerCount(userId);
 

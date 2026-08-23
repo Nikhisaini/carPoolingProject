@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   User,
   Car,
@@ -12,19 +12,39 @@ import {
   CarTaxiFront,
   Bookmark,
   Calendar,
+  MessageCircle,
 } from "lucide-react";
 import { logout } from "@/redux/slices/authSlice";
 import api from "@/services/Api";
+import socket, { disconnectSocket } from "@/services/socket";
+import { getImageUrl } from "@/lib/utils";
 
 function Header() {
   const [open, setOpen] = useState(false);
   const [profile, setProfile] = useState(null);
+  const [unreadCount, setUnreadCount] = useState(0);
   const dropdownRef = useRef(null);
 
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch();
 
   const { user, isAuthenticated } = useSelector((state) => state.auth);
+
+  const fetchUnreadCount = async () => {
+    if (!isAuthenticated) {
+      setUnreadCount(0);
+      return;
+    }
+    try {
+      const response = await api.get("/chat/unread-count");
+      if (response.data?.success) {
+        setUnreadCount(response.data.unreadCount || 0);
+      }
+    } catch (error) {
+      console.error("Header unread count error:", error);
+    }
+  };
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -49,7 +69,28 @@ function Header() {
     };
 
     fetchProfile();
-  }, [isAuthenticated, user]);
+    fetchUnreadCount();
+  }, [isAuthenticated, user, location.pathname]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const handleNewMessage = () => {
+      fetchUnreadCount();
+    };
+
+    const handleRead = () => {
+      fetchUnreadCount();
+    };
+
+    socket.on("chat:message:new", handleNewMessage);
+    socket.on("chat:read", handleRead);
+
+    return () => {
+      socket.off("chat:message:new", handleNewMessage);
+      socket.off("chat:read", handleRead);
+    };
+  }, [isAuthenticated]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -66,6 +107,7 @@ function Header() {
   }, []);
 
   const handleLogout = () => {
+    disconnectSocket();
     dispatch(logout());
     setProfile(null);
     setOpen(false);
@@ -82,25 +124,19 @@ function Header() {
     .trim();
 
   const profileImage = currentUser?.profileImage;
-
-  const profileImageUrl = profileImage
-    ? profileImage.startsWith("http")
-      ? profileImage
-      : `http://localhost:8081/${profileImage.replace(/^\/+/, "")}`
-    : null;
+  const profileImageUrl = getImageUrl(profileImage);
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-gray-200 bg-white">
       <div className="mx-auto flex h-[72px] max-w-7xl items-center justify-between px-5 lg:px-8">
         <Link to="/" className="flex items-center gap-2">
-          <Car />
-
+          <Car className="text-blue-600" />
           <span className="text-xl font-bold tracking-tight text-gray-900">
             YooHuCar
           </span>
         </Link>
 
-        <div className="hidden items-center gap-2 md:flex">
+        <div className="flex items-center gap-2 sm:gap-3">
           <Link
             to="/search"
             title="Search Rides"
@@ -111,176 +147,191 @@ function Header() {
 
           <Link
             to="/publish-ride"
-            className="flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-100 hover:text-blue-600"
+            className="hidden sm:flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:border-blue-500 hover:bg-blue-50 hover:text-blue-600"
           >
-            <PlusCircle size={18} />
-            Publish Ride
+            <PlusCircle size={17} className="text-blue-600" />
+            <span>Publish Ride</span>
           </Link>
-        </div>
 
-        <div className="relative" ref={dropdownRef}>
-          <button
-            type="button"
-            onClick={() => setOpen((prev) => !prev)}
-            className="flex items-center gap-2 rounded-full border border-gray-200 bg-white px-2 py-1.5 transition hover:border-gray-300 hover:bg-gray-50 focus:outline-none"
-          >
-            {isAuthenticated ? (
-              <>
-                {profileImageUrl ? (
-                  <img
-                    src={profileImageUrl}
-                    alt={`${firstName} ${lastName}`}
-                    className="h-9 w-9 rounded-full object-cover"
-                    onError={(event) => {
-                      event.currentTarget.style.display = "none";
-                      event.currentTarget.nextElementSibling.style.display =
-                        "flex";
-                    }}
-                  />
-                ) : null}
-
-                <div
-                  className={`h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold text-white ${
-                    profileImageUrl ? "hidden" : "flex"
-                  }`}
-                >
-                  {initials}
-                </div>
-
-                <span className="hidden max-w-24 truncate text-sm font-medium text-gray-800 sm:block">
-                  {firstName}
+          {isAuthenticated && (
+            <Link
+              to="/chat"
+              title="Messages"
+              className="relative flex h-10 w-10 items-center justify-center rounded-full text-gray-700 transition hover:bg-gray-100 hover:text-blue-600"
+            >
+              <MessageCircle size={21} />
+              {unreadCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-blue-600 px-1 text-[11px] font-bold text-white shadow-sm ring-2 ring-white animate-in zoom-in-50 duration-200">
+                  {unreadCount > 99 ? "99+" : unreadCount}
                 </span>
-              </>
-            ) : (
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-gray-600">
-                <User size={19} />
-              </div>
-            )}
+              )}
+            </Link>
+          )}
 
-            <ChevronDown
-              size={17}
-              className={`text-gray-500 transition-transform ${
-                open ? "rotate-180" : ""
-              }`}
-            />
-          </button>
-
-          {open && (
-            <div className="absolute right-0 mt-3 w-64 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl">
+          <div className="relative" ref={dropdownRef}>
+            <button
+              type="button"
+              onClick={() => setOpen((prev) => !prev)}
+              className="flex items-center gap-2 rounded-full border border-gray-200 bg-white px-2 py-1.5 transition hover:border-gray-300 hover:bg-gray-50 focus:outline-none"
+            >
               {isAuthenticated ? (
                 <>
-                  <div className="border-b border-gray-100 bg-gray-50 px-4 py-4">
-                    <div className="flex items-center gap-3">
-                      {profileImageUrl ? (
-                        <img
-                          src={profileImageUrl}
-                          alt={`${firstName} ${lastName}`}
-                          className="h-11 w-11 shrink-0 rounded-full object-cover"
-                          onError={(event) => {
-                            event.currentTarget.style.display = "none";
-                            event.currentTarget.nextElementSibling.style.display =
-                              "flex";
-                          }}
-                        />
-                      ) : null}
+                  {profileImageUrl ? (
+                    <img
+                      src={profileImageUrl}
+                      alt={`${firstName} ${lastName}`}
+                      className="h-9 w-9 rounded-full object-cover"
+                      onError={(event) => {
+                        event.currentTarget.style.display = "none";
+                        event.currentTarget.nextElementSibling.style.display =
+                          "flex";
+                      }}
+                    />
+                  ) : null}
 
-                      <div
-                        className={`h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-600 font-semibold text-white ${
-                          profileImageUrl ? "hidden" : "flex"
-                        }`}
-                      >
-                        {initials}
-                      </div>
-
-                      <div className="min-w-0">
-                        <p className="truncate font-semibold text-gray-900">
-                          {firstName} {lastName}
-                        </p>
-
-                        <p className="truncate text-xs text-gray-500">
-                          {currentUser?.email}
-                        </p>
-                      </div>
-                    </div>
+                  <div
+                    className={`h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold text-white ${
+                      profileImageUrl ? "hidden" : "flex"
+                    }`}
+                  >
+                    {initials}
                   </div>
 
-                  <Link
-                    to="/profile"
-                    onClick={() => setOpen(false)}
-                    className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 transition hover:bg-gray-50"
-                  >
-                    <User size={18} />
-                    Profile
-                  </Link>
-
-                  <Link
-                    to="/my-licence"
-                    onClick={() => setOpen(false)}
-                    className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 transition hover:bg-gray-50"
-                  >
-                    <FileText size={18} />
-                    Licence
-                  </Link>
-
-                  <Link
-                    to="/my-vehicles"
-                    onClick={() => setOpen(false)}
-                    className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 transition hover:bg-gray-50"
-                  >
-                    <Car size={18} />
-                    Vehicles
-                  </Link>
-
-                  <Link
-                    to="/my-rides"
-                    onClick={() => setOpen(false)}
-                    className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 transition hover:bg-gray-50"
-                  >
-                    <CarTaxiFront size={18} />
-                    Rides
-                  </Link>
-                  <Link
-                    to="/my-bookings"
-                    onClick={() => setOpen(false)}
-                    className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 transition hover:bg-gray-50"
-                  >
-                    <Calendar size={18} />
-                    Bookings
-                  </Link>
-
-                  <div className="border-t border-gray-100">
-                    <button
-                      type="button"
-                      onClick={handleLogout}
-                      className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium text-red-600 transition hover:bg-red-50"
-                    >
-                      <LogOut size={18} />
-                      Logout
-                    </button>
-                  </div>
+                  <span className="hidden max-w-24 truncate text-sm font-medium text-gray-800 sm:block">
+                    {firstName}
+                  </span>
                 </>
               ) : (
-                <>
-                  <Link
-                    to="/login"
-                    onClick={() => setOpen(false)}
-                    className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50"
-                  >
-                    <User size={18} />
-                    Login
-                  </Link>
-
-                  <Link
-                    to="/register"
-                    onClick={() => setOpen(false)}
-                    className="block border-t border-gray-100 px-4 py-3 text-sm font-medium text-blue-600 hover:bg-blue-50"
-                  >
-                    Register
-                  </Link>
-                </>
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-gray-600">
+                  <User size={19} />
+                </div>
               )}
-            </div>
-          )}
+
+              <ChevronDown
+                size={17}
+                className={`text-gray-500 transition-transform ${
+                  open ? "rotate-180" : ""
+                }`}
+              />
+            </button>
+
+            {open && (
+              <div className="absolute right-0 mt-3 w-64 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl">
+                {isAuthenticated ? (
+                  <>
+                    <div className="border-b border-gray-100 bg-gray-50 px-4 py-4">
+                      <div className="flex items-center gap-3">
+                        {profileImageUrl ? (
+                          <img
+                            src={profileImageUrl}
+                            alt={`${firstName} ${lastName}`}
+                            className="h-11 w-11 shrink-0 rounded-full object-cover"
+                            onError={(event) => {
+                              event.currentTarget.style.display = "none";
+                              event.currentTarget.nextElementSibling.style.display =
+                                "flex";
+                            }}
+                          />
+                        ) : null}
+
+                        <div
+                          className={`h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-600 font-semibold text-white ${
+                            profileImageUrl ? "hidden" : "flex"
+                          }`}
+                        >
+                          {initials}
+                        </div>
+
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold text-gray-900">
+                            {firstName} {lastName}
+                          </p>
+
+                          <p className="truncate text-xs text-gray-500">
+                            {currentUser?.email}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <Link
+                      to="/profile"
+                      onClick={() => setOpen(false)}
+                      className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 transition hover:bg-gray-50"
+                    >
+                      <User size={18} />
+                      Profile
+                    </Link>
+
+                    <Link
+                      to="/my-licence"
+                      onClick={() => setOpen(false)}
+                      className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 transition hover:bg-gray-50"
+                    >
+                      <FileText size={18} />
+                      Licence
+                    </Link>
+
+                    <Link
+                      to="/my-vehicles"
+                      onClick={() => setOpen(false)}
+                      className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 transition hover:bg-gray-50"
+                    >
+                      <Car size={18} />
+                      Vehicles
+                    </Link>
+
+                    <Link
+                      to="/my-rides"
+                      onClick={() => setOpen(false)}
+                      className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 transition hover:bg-gray-50"
+                    >
+                      <CarTaxiFront size={18} />
+                      Rides
+                    </Link>
+                    <Link
+                      to="/my-bookings"
+                      onClick={() => setOpen(false)}
+                      className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 transition hover:bg-gray-50"
+                    >
+                      <Calendar size={18} />
+                      Bookings
+                    </Link>
+
+                    <div className="border-t border-gray-100">
+                      <button
+                        type="button"
+                        onClick={handleLogout}
+                        className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium text-red-600 transition hover:bg-red-50"
+                      >
+                        <LogOut size={18} />
+                        Logout
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <Link
+                      to="/login"
+                      onClick={() => setOpen(false)}
+                      className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      <User size={18} />
+                      Login
+                    </Link>
+
+                    <Link
+                      to="/register"
+                      onClick={() => setOpen(false)}
+                      className="block border-t border-gray-100 px-4 py-3 text-sm font-medium text-blue-600 hover:bg-blue-50"
+                    >
+                      Register
+                    </Link>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

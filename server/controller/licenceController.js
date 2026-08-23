@@ -136,9 +136,9 @@ const getLicenceById = async (req, res) => {
       isActive: true,
     }).populate("licenceCategoryId");
 
-    const categories = categoryMappings.map(
-      (mapping) => mapping.licenceCategoryId,
-    );
+    const categories = categoryMappings
+      .map((mapping) => mapping.licenceCategoryId)
+      .filter(Boolean);
 
     return res.status(200).json({
       success: true,

@@ -148,14 +148,18 @@ function MyLicence() {
                 <p className="text-sm text-gray-500">Categories</p>
 
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {licence.categories?.map((category) => (
-                    <span
-                      key={category._id}
-                      className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700"
-                    >
-                      {category.name}
-                    </span>
-                  ))}
+                  {licence.categories?.filter(Boolean).length > 0 ? (
+                    licence.categories.filter(Boolean).map((category) => (
+                      <span
+                        key={category._id || category.name}
+                        className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700"
+                      >
+                        {category.name || "Unknown"}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-xs text-gray-400">No categories</span>
+                  )}
                 </div>
               </div>
             </div>

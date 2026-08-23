@@ -309,14 +309,14 @@ const LicenceDetailsDialog = ({
                     Categories
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    {licence.categories?.length > 0 ? (
-                      licence.categories.map((category) => (
+                    {licence.categories?.filter(Boolean).length > 0 ? (
+                      licence.categories.filter(Boolean).map((category) => (
                         <Badge
-                          key={category._id}
+                          key={category._id || category.name}
                           variant="secondary"
                           className="rounded-md border border-border bg-background px-2.5 py-1 text-foreground"
                         >
-                          {category.name}
+                          {category.name || "Unknown"}
                         </Badge>
                       ))
                     ) : (
